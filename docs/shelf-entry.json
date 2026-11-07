@@ -10,9 +10,9 @@
       "composeFile": "a2a-lab/docker-compose.yml",
       "composeOverlays": [],
       "pingProducts": [],
-      "notes": "Host-run: ./scripts/run.sh (port 7700). Mock needs no tenant and no credentials. Docker: HOST_PORT=7700 docker compose up --build -d (published on 127.0.0.1 only). The decision contract mirrors the AI-DEMO2 a2aDelegationService chained RFC 8693 exchange (scope narrowed per hop) + GatewayTokenPolicy nested-act exemption + the Agent Card registry (UC2.6 WHO-is-acting), enforced live 2026-11-06. Repo: curtismu7/a2a-lab-LAB. Catalog id D121 (assigned 2026-11-07).",
+      "notes": "Host-run: ./scripts/run.sh (port 7700). Mock needs no tenant and no credentials. Docker: HOST_PORT=7700 docker compose up --build -d (published on 127.0.0.1 only). The decision contract mirrors the AI-DEMO2 a2aDelegationService chained RFC 8693 exchange (scope narrowed per hop) + GatewayTokenPolicy nested-act exemption + the Agent Card registry (UC2.6 WHO-is-acting), enforced live 2026-11-06. Repo: curtismu7/a2a-lab-LAB. Catalog id D122 (assigned 2026-11-07).",
       "repo": "https://github.com/curtismu7/a2a-lab-LAB",
-      "catalogId": "D121",
+      "catalogId": "D122",
       "alsoCatalogIds": [],
       "tags": [
         "agent-gateway",

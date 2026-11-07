@@ -57,8 +57,9 @@ All mock, no tenant, no credentials, netguard blocks all egress, loopback-only p
 - ✅ Lab-proxy route + network added in `shared/lab-proxy` (**uncommitted** — nginx.conf,
   docker-compose.yml modified; the container was also `docker network connect`ed manually)
 - ✅ Playwright proof complete; screenshots taken
-- ❌ **Shelf entry NOT yet added** to `standalone/demo-shelf-LAB` (catalog row **D121**,
-  catalog-tags D121 under the `tags` key, registry entry, PROXY_PATHS in
+- ✅ **Shelf entry added** (2026-11-07, demo-shelf-LAB PR #5, catalog row **D122** — D121 went to Privilege A2A Anthropic; rebuild the shelf container to show it). Original to-do text kept below:
+- (done) shelf entry in `standalone/demo-shelf-LAB` (catalog row **D122**,
+  catalog-tags D122 under the `tags` key, registry entry, PROXY_PATHS in
   `server/src/app.js`, then `npm run docker` to rebuild the shelf container)
 - ❌ **Board row not closed** (`STANDALONE-COORDINATION.md` line ~179 still says "planned")
 - ❌ **Meta-repo pin not bumped** (`standalone/a2a-lab-LAB` shows modified in
@@ -106,8 +107,8 @@ All mock, no tenant, no credentials, netguard blocks all egress, loopback-only p
    + restart. Remove the manual connect once compose handles it.
 2. **Push the handoff + final commit(s)** in `curtismu7/a2a-lab-LAB` (`docs/HANDOFF.md` is
    currently local-only) and confirm CI stays green.
-3. **Shelf entry (D121)** in `standalone/demo-shelf-LAB`: add the D121 row to `data/catalog.json`
-   (copy the a2a `docs/shelf-entry.json` demo object), a D121 entry in `data/catalog-tags.json`
+3. **Shelf entry (D122)** in `standalone/demo-shelf-LAB`: add the D122 row to `data/catalog.json`
+   (copy the a2a `docs/shelf-entry.json` demo object), a D122 entry in `data/catalog-tags.json`
    (under the `tags` key; no substring `member`), the registry entry in
    `.data/demos.local.json`, and the PROXY_PATHS map entry in `server/src/app.js`. Run its tests,
    then `npm run docker` to rebuild the shelf container; verify the card at `/api/shelf` has
