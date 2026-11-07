@@ -18,7 +18,7 @@ export function buildPack() {
     id: 'a2a-lab',
     title: 'A2A Lab',
     version,
-    demo: { id: 'a2a-lab', name: 'A2A Lab', catalog: 'D121', baseUrl: 'http://localhost:7700', doctor: '/api/health', tags: ['delegation', 'a2a', 'agent', 'authorize', 'oauth', 'policy', 'mock-only'] },
+    demo: { id: 'a2a-lab', name: 'A2A Lab', catalog: 'D122', baseUrl: 'http://localhost:7700', doctor: '/api/health', tags: ['delegation', 'a2a', 'agent', 'authorize', 'oauth', 'policy', 'mock-only'] },
     glossary: [
       { id: 'delegation', term: 'Nested act chain', definition: 'Two RFC 8693 exchanges build act={specialist, act:{generalist}}: the specialist acts via the generalist, acting for the same user. Scope narrows at each hop — least privilege across agent hops, the full chain visible in the token.', aliases: ['token exchange', 'act claim', 'RFC 8693'] },
       { id: 'a2a', term: 'A2A (Agent-to-Agent)', definition: 'Two things are called A2A: the Linux Foundation agent protocol (Agent Card, JSON-RPC, a real 401 without the bearer) and the identity chain. Authorization keys on WHO is acting — an unregistered specialist identity is denied.', aliases: ['agent card', 'agent-to-agent'] },

@@ -6,7 +6,7 @@
   "demo": {
     "id": "a2a-lab",
     "name": "A2A Lab",
-    "catalog": "D121",
+    "catalog": "D122",
     "baseUrl": "http://localhost:7700",
     "doctor": "/api/health",
     "tags": [
