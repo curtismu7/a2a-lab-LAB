@@ -1,0 +1,153 @@
+{
+  "schema": "diagram-studio/1",
+  "id": "a2a-flow",
+  "title": "A2A: generalist to specialist, the nested act chain",
+  "lede": "Two RFC 8693 exchanges build act={specialist, act:{generalist}}; the gateway routes the specialist call only when the SPECIALIST is registered \u2014 authorization keys on WHO is acting. Mock only.",
+  "groups": {
+    "actor": {
+      "label": "Actors",
+      "color": "dark"
+    },
+    "policy": {
+      "label": "Policy (mock)",
+      "color": "red"
+    },
+    "human": {
+      "label": "The human",
+      "color": "blue"
+    },
+    "resource": {
+      "label": "Resources",
+      "color": "grey"
+    }
+  },
+  "nodes": [
+    {
+      "id": "user",
+      "label": "User (consents once)",
+      "group": "human",
+      "x": 0,
+      "y": 80
+    },
+    {
+      "id": "idp",
+      "label": "Exchange #1: act={generalist}",
+      "group": "policy",
+      "x": 300,
+      "y": 80
+    },
+    {
+      "id": "generalist",
+      "label": "Generalist agent",
+      "group": "actor",
+      "x": 0,
+      "y": 240
+    },
+    {
+      "id": "idp2",
+      "label": "Exchange #2: act={specialist, act:{generalist}}",
+      "group": "policy",
+      "x": 300,
+      "y": 240
+    },
+    {
+      "id": "specialist",
+      "label": "Specialist agent",
+      "group": "actor",
+      "x": 600,
+      "y": 240
+    },
+    {
+      "id": "gateway",
+      "label": "A2A gateway: chain + registry",
+      "group": "policy",
+      "x": 900,
+      "y": 240
+    },
+    {
+      "id": "tool",
+      "label": "Specialist tool dispatches",
+      "group": "resource",
+      "x": 1200,
+      "y": 240
+    }
+  ],
+  "edges": [
+    {
+      "source": "user",
+      "target": "idp",
+      "label": "consent"
+    },
+    {
+      "source": "idp",
+      "target": "generalist",
+      "label": "token: sub=user, act={generalist}"
+    },
+    {
+      "source": "generalist",
+      "target": "idp2",
+      "label": "handoff: specialist actor"
+    },
+    {
+      "source": "idp2",
+      "target": "specialist",
+      "label": "nested token, scope narrowed"
+    },
+    {
+      "source": "specialist",
+      "target": "gateway",
+      "label": "message/send with the nested chain"
+    },
+    {
+      "source": "gateway",
+      "target": "tool",
+      "label": "PERMIT: registered + chain valid"
+    },
+    {
+      "source": "gateway",
+      "target": "specialist",
+      "label": "DENY: unregistered specialist",
+      "dashed": true
+    }
+  ],
+  "steps": [
+    {
+      "title": "Consent, then exchange #1",
+      "what": "The user consents; token exchange mints act={generalist} acting for the user.",
+      "edges": [
+        0,
+        1
+      ]
+    },
+    {
+      "title": "The generalist hands off",
+      "what": "Exchange #2 mints the nested chain act={specialist, act:{generalist}} \u2014 same user, scope narrowed to the handoff's grant.",
+      "edges": [
+        2,
+        3
+      ]
+    },
+    {
+      "title": "The specialist calls the gateway",
+      "what": "The full chain is visible in the token: who is acting, via whom, for whom.",
+      "edges": [
+        4
+      ]
+    },
+    {
+      "title": "The registry decides",
+      "what": "The gateway checks the SPECIALIST is registered \u2014 same user, same shape, unregistered identity is denied.",
+      "edges": [
+        5,
+        6
+      ]
+    },
+    {
+      "title": "Attributable dispatch",
+      "what": "PERMIT dispatches with the chain in the token: least privilege across agent hops.",
+      "edges": [
+        5
+      ]
+    }
+  ]
+}

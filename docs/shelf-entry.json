@@ -1,0 +1,26 @@
+{
+  "demos": [
+    {
+      "id": "a2a-lab",
+      "name": "A2A Lab",
+      "kind": "Demo",
+      "description": "A generalist agent hands off to a specialist: two RFC 8693 exchanges build the nested act chain act={specialist, act:{generalist}}, scope narrowed per hop. The gateway routes the call only when the SPECIALIST is registered \u2014 same user, same shape, unregistered identity denied (UC2.6 PERMIT_THEN_DENY). Agent Card served; no bearer is a real 401 (UC2.7). Mock of UC2/UC2.5/UC2.6/UC2.7.",
+      "url": "http://localhost:7700",
+      "healthPath": "/api/health",
+      "composeFile": "a2a-lab/docker-compose.yml",
+      "composeOverlays": [],
+      "pingProducts": [],
+      "notes": "Host-run: ./scripts/run.sh (port 7700). Mock needs no tenant and no credentials. Docker: HOST_PORT=7700 docker compose up --build -d (published on 127.0.0.1 only). The decision contract mirrors the AI-DEMO2 a2aDelegationService chained RFC 8693 exchange (scope narrowed per hop) + GatewayTokenPolicy nested-act exemption + the Agent Card registry (UC2.6 WHO-is-acting), enforced live 2026-11-06. Repo: curtismu7/a2a-lab-LAB. Catalog id D121 (assigned 2026-11-07).",
+      "repo": "https://github.com/curtismu7/a2a-lab-LAB",
+      "catalogId": "D121",
+      "alsoCatalogIds": [],
+      "tags": [
+        "agent-gateway",
+        "ai-agent-security",
+        "agent-controls",
+        "simulated"
+      ],
+      "where": "installed"
+    }
+  ]
+}
