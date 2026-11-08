@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: a2a-lab
+  labels: { app: a2a-lab }
+spec:
+  selector: { app: a2a-lab }
+  ports:
+    - { name: http, port: 80, targetPort: http }
