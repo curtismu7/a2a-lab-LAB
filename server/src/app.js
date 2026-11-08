@@ -15,6 +15,7 @@ import { buildStory } from './story.js';
 import { DIAGRAM_NAMES, buildDiagram } from './diagramData.js';
 import { A2A_AUDIENCE, A2AInputError, LIMITS, agentCard, actChainDepth, createRegistry, evaluateA2a, exchangeOne, exchangeTwo } from './a2a.js';
 import { buildHops, newTrace } from './trace.js';
+import { mountShelfRoute } from './shelfLink.js';
 import { createWorkspaces, workspaceFrom } from './workspaces.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -158,6 +159,8 @@ export function createApp({
     workspaces.resetWorkspace(ws);
     res.json({ reset: 'ok', workspace: ws });
   }));
+  // Shelf button: the launcher URL from env SHELF_URL. Registered BEFORE the 404 catch-all and outside any web-build check.
+  mountShelfRoute(api);
   api.use((_req, res) => res.status(404).json({ error: 'not_found' }));
   app.use('/api', api);
   // Errors become short JSON. Express's default handler would send an HTML stack trace with absolute file paths.

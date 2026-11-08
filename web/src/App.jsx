@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import PolicyGate from "./components/PolicyGate";
 import DiagramTab from "./components/DiagramTab";
 import TalkTrack from "./components/TalkTrack";
+import ShelfLink from "./components/ShelfLink";
 import { getJson, resetWorkspace, setMode } from "./api";
 
 export const TABS = [
@@ -113,6 +114,7 @@ export default function App() {
                 </select>
               </label>
             )}
+            <ShelfLink />
             <button type="button" onClick={reset} data-testid="reset">Reset</button>
             <button type="button" aria-pressed={presenter} onClick={() => setPresenter((v) => !v)} data-testid="presenter">{presenter ? "Exit presenter (Esc)" : "Presenter (P)"}</button>
           </div>
