@@ -11,6 +11,9 @@ code { font-family: var(--font-mono); font-size: var(--font-size-2xs); }
 button { font: inherit; font-size: var(--font-size-sm); padding: 6px 12px; border-radius: var(--btn-radius); border: 1px solid var(--th-border-strong); background: var(--th-bg-card); color: var(--th-text); cursor: pointer; }
 button:hover { background: var(--th-bg-hover); }
 button:focus-visible { outline: 2px solid var(--th-status-info); outline-offset: 2px; }
+.shelf-link { display: inline-flex; align-items: center; padding: 6px 12px; font-size: var(--font-size-sm); border-radius: var(--btn-radius); border: 1px solid var(--th-border-strong); background: var(--th-bg-card); color: var(--th-text); text-decoration: none; }
+.shelf-link:hover { background: var(--th-bg-hover); }
+.shelf-link:focus-visible { outline: 2px solid var(--th-status-info); outline-offset: 2px; }
 .track { margin: 8px 0; }
 .track__list { list-style: none; display: flex; gap: 8px; padding: 0; margin: 0; flex-wrap: wrap; }
 .track__list button b { color: var(--th-accent); margin-right: 4px; }
