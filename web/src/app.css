@@ -75,3 +75,5 @@ details { margin: 6px 0; } summary { cursor: pointer; font-size: var(--font-size
 .pat__title { margin: 0 0 4px; font-size: var(--font-size-lg); }
 .app--presenter { font-size: 18px; } .app--presenter .panel h2 { font-size: var(--font-size-xl); } .app--presenter .lesson, .app--presenter .presenter-say, .app--presenter .verdict__reasons { font-size: var(--font-size-lg); }
 .app--presenter .json, .app--presenter .tbl { font-size: var(--font-size-base); }
+/* The vendored ReturnLink uses the shared token names; map them to this app's tokens, for the return link only. */
+.return-link { --border: var(--th-border-strong); --surface: var(--th-bg-card); --text: var(--th-text); --focus: var(--th-status-info); }
