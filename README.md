@@ -1,6 +1,9 @@
-# A2A Lab
+# A2A LAB
 
-**Tier: Demo.** An agent attempts a money movement; a mock authorization policy decides by amount band and agent context — PERMIT below the confirm bar, human consent (HITL) in the confirm band, MFA step-up at the MFA bar, hard DENY above the ceiling — and CIBA requests out-of-band approval on the user's own device for a sensitive agent-initiated action, regardless of amount. This is the standalone mock of the AI-DEMO2 HITL track (UC7 / UC8 / UC22 and the `authorizeObligations` / `hitlCredit` / CIBA services) — same decision contract, no real policy engine or tenant.
+Tier: Demo.
+Repo: https://github.com/curtismu7/a2a-lab-LAB
+
+An agent attempts a money movement; a mock authorization policy decides by amount band and agent context — PERMIT below the confirm bar, human consent (HITL) in the confirm band, MFA step-up at the MFA bar, hard DENY above the ceiling — and CIBA requests out-of-band approval on the user's own device for a sensitive agent-initiated action, regardless of amount. This is the standalone mock of the AI-DEMO2 HITL track (UC7 / UC8 / UC22 and the `authorizeObligations` / `hitlCredit` / CIBA services) — same decision contract, no real policy engine or tenant.
 
 Three ideas:
 
@@ -16,10 +19,41 @@ Scaffold copied from hitl-mfa-lab-LAB (fork rule 4 attribution); every surface h
 
 ## Run it
 
-- `./scripts/run.sh` — host-run on port 7680 (Node >= 26), opens the browser.
-- Docker: `HOST_PORT=7680 docker compose up --build -d` (published on 127.0.0.1 only).
+- `./scripts/run.sh` — host-run on port 7700 (Node >= 26), opens the browser.
+- Docker: `HOST_PORT=7700 docker compose up --build -d` (published on 127.0.0.1 only).
 - Through the shared lab-proxy: `https://local.ping-devops.com:8443/a2a-lab/` (never a raw loopback URL).
 - Tests: `npm ci && npm test` — 66 server + 18 web + 5 packaging tests.
+
+## Run from a clone
+
+Prerequisites: Node 26 or newer. Docker (OrbStack) only if you use the Docker form. Mock needs no tenant, credentials or settings.
+
+```
+git clone https://github.com/curtismu7/a2a-lab-LAB.git
+cd a2a-lab-LAB
+npm ci
+npm run build
+npm run doctor
+npm start
+```
+
+Open http://127.0.0.1:7700/ (the server serves the built page). `GET /api/health` answers `demo-health/1`. Or with Docker: `HOST_PORT=7700 docker compose up --build -d` from the same folder.
+
+## Ports, and what to do if the port is taken
+
+```
+Ports: a2a-lab-LAB listens on 7700 by default (allowed range 7700-7709).
+Docker publishes it on 127.0.0.1:7700 only.
+
+If the port is taken:
+1. Find what is using it:
+   lsof -iTCP:7700 -sTCP:LISTEN -n -P
+2. If it is an old copy of this lab (npm start), stop that process: kill <PID>.
+   If it is this lab's container: docker compose down (from this folder).
+3. If it is something else, stop it and free 7700. The server refuses ports outside
+   7700-7709 on purpose (npm run doctor says so).
+4. Then start again: npm start, or docker compose up -d.
+```
 
 ## Scenarios
 
