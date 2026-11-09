@@ -86,9 +86,9 @@ export default function App() {
   const banner = story ? story.banner : hosted === true ? BANNER_HOSTED : hosted === false ? BANNER_LOCAL : BANNER_UNKNOWN;
   return (
     <div className={`app${presenter ? " app--presenter" : ""}`}>
-      <ReturnLink app="a2a-lab" />
       <header>
         <p className="banner" role="status" data-testid="banner">{banner}</p>
+        <ReturnLink app="a2a-lab" />
         <div className="head">
           <div>
             <h1>A2A Lab</h1>

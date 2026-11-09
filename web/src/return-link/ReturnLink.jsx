@@ -8,9 +8,9 @@ import { returnLinkFor } from "./returnTargets.js";
  *
  * Props:
  *   app      (required) this app's own id, sent back as ?returned=<app>
- *   variant  "strip" (default): a full-width note at the top of the page, "Opened from <app> · <uc>" + Back button
+ *   variant  "strip" (default): a full-width note right below the simulation banner, "Opened from <app> · <uc>" + Back button
  *            "header": a compact Back button for the shell bar
- *   location (optional) a { hostname, search } object instead of window.location (tests)
+ *   location (optional) a { pathname, search } object instead of window.location (tests)
  *   navigate (optional) function(href) instead of window.location.assign (tests)
  *   className (optional) extra classes
  *

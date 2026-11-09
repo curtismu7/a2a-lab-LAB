@@ -31,6 +31,7 @@ describe("hand-off from Customer Agent LAB", () => {
     window.history.replaceState(null, "", "/?from=customer-agent&uc=UC2.6&vertical=banking");
     render(<App />);
     expect(screen.getByRole("note", { name: "Opened from Customer Agent LAB" }).textContent).toContain("UC2.6");
+    expect(screen.getByTestId("banner").nextElementSibling).toBe(screen.getByRole("note", { name: "Opened from Customer Agent LAB" })); // banner first, strip right below
     expect(screen.getAllByRole("button", { name: /Back to Customer Agent LAB/ })).toHaveLength(2);
     await waitFor(() => expect(screen.getByTestId("pg").textContent).toBe("a2a-unregistered"));
     expect(calls).toContain("/api/scenarios?vertical=finance");

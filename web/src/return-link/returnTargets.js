@@ -5,9 +5,11 @@
 // bar ever becomes part of the target's origin or path: `from` only selects a list entry, and `uc` / `vertical` must be
 // id-shaped before they are shown or carried back. So there is no open redirect. Unknown `from` means no strip.
 //
-// Where Back goes: on a loopback host (the app opened on its own 127.0.0.1 port) the target's directUrl; anywhere else
-// (the shared lab proxy, one origin for every lab) the target's proxyPath on this same origin. The link carries ids
-// only: returned=<this app id>&uc=<uc>. No token, secret, cookie or user data.
+// Where Back goes, decided from this page's own path (the host alone cannot tell: the lab proxy also runs on
+// 127.0.0.1:8443 and localhost:8443): under a directory prefix (/a2a-lab/...) the page is behind the shared lab
+// proxy, so Back is the target's proxyPath on this same origin; served at its root ('/' or '/index.html') the app
+// is on its own port, so Back is the target's directUrl. The link carries ids only: returned=<this app id>&uc=<uc>.
+// No token, secret, cookie or user data.
 
 export const RETURN_TARGETS = Object.freeze({
   'customer-agent': Object.freeze({
@@ -20,8 +22,8 @@ export const RETURN_TARGETS = Object.freeze({
 const ID = /^[A-Za-z0-9.-]{1,40}$/;
 export const isId = (v) => typeof v === 'string' && ID.test(v);
 
-const LOOPBACK = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
-export const isLoopbackHost = (hostname) => typeof hostname === 'string' && LOOPBACK.has(hostname.toLowerCase());
+// True when the page sits under a directory prefix (a non-empty first path segment followed by '/'): the lab proxy.
+export const isProxiedPath = (pathname) => typeof pathname === 'string' && /^\/[^/]+\//.test(pathname);
 
 // Reads ?from=&uc=&vertical= from a query string. Returns { from, label, uc, vertical } or null when there must be no
 // strip: unknown or repeated `from`, a missing or bad `uc`, a bad `vertical` (vertical is optional), or a repeated id.
@@ -39,12 +41,12 @@ export function readReturnContext(search) {
 }
 
 // The Back link for a context from readReturnContext, from the app `self` (its own id), given this page's location
-// ({ hostname }). Returns null when there must be no button.
+// ({ pathname }). Returns null when there must be no button.
 export function backHref(ctx, self, location) {
   if (!ctx || !isId(self) || !Object.hasOwn(RETURN_TARGETS, ctx.from) || !isId(ctx.uc)) return null;
   const t = RETURN_TARGETS[ctx.from];
   const query = new URLSearchParams([['returned', self], ['uc', ctx.uc]]).toString();
-  const base = isLoopbackHost(location?.hostname) ? t.directUrl : t.proxyPath;
+  const base = isProxiedPath(location?.pathname) ? t.proxyPath : t.directUrl;
   return `${base}?${query}`;
 }
 

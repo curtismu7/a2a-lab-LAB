@@ -1,4 +1,4 @@
-# vendored byte for byte from curtismu7/AI-DEMO-Standalone shared/return-link at 461e6a8 (PR #117); re-vendor, do not edit
-4dadd8902e8e2e274b5d9a04e81a1f849789bfec02c389584472f02ec8440720  ReturnLink.jsx
-1fabf2e3b3742d7ea6db40d35271ac33629be246346b79e7b4721f00134d4521  ReturnLink.test.jsx
-29cd321cef0735aaa4307286cf98edc438a6617ca16882e7f85e6c94d2d03591  returnTargets.js
+# vendored byte for byte from curtismu7/AI-DEMO-Standalone shared/return-link at a00848a (main, PR #117); re-vendor, do not edit.
+4f9d61d62d7e87b42c63ef15c59c694b90baaad5c2483ce032c28eac3efe069f  ReturnLink.jsx
+0b4019a38b4dffe66cd339ca36f09009f83e69ff88e228697edb45ec7d0126b0  ReturnLink.test.jsx
+c7620d945698530c0764149f9b5aa8e0d7a06cf4e2f1397f50300015b4c94d37  returnTargets.js

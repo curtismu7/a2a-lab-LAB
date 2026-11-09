@@ -5,7 +5,7 @@ import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import ReturnLink from "./ReturnLink.jsx";
 
 afterEach(cleanup);
-const at = (search, hostname = "labs.example") => ({ hostname, search });
+const at = (search, pathname = "/some-app/") => ({ hostname: "labs.example", pathname, search });
 
 describe("ReturnLink", () => {
   it("renders nothing without a known from", () => {
@@ -30,9 +30,9 @@ describe("ReturnLink", () => {
     expect(navigate).toHaveBeenCalledWith("/customer-agent/?returned=some-app&uc=UC47");
   });
 
-  it("header variant: a compact button, direct URL on loopback", () => {
+  it("header variant: a compact button, direct URL when the app is served at its root", () => {
     const navigate = vi.fn();
-    render(<ReturnLink app="some-app" variant="header" navigate={navigate} location={at("?from=customer-agent&uc=UC47", "127.0.0.1")} />);
+    render(<ReturnLink app="some-app" variant="header" navigate={navigate} location={at("?from=customer-agent&uc=UC47", "/")} />);
     expect(screen.queryByRole("note")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Back to Customer Agent LAB/ }));
     expect(navigate).toHaveBeenCalledWith("http://127.0.0.1:5603/?returned=some-app&uc=UC47");
