@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import PolicyGate from "./components/PolicyGate";
 import DiagramTab from "./components/DiagramTab";
 import TalkTrack from "./components/TalkTrack";
-import ShelfLink from "./components/ShelfLink";
+import TopMenu, { applyFontSize } from "./top-menu/TopMenu.jsx";
+import "./top-menu/top-menu.css";
 import ReturnLink from "./return-link/ReturnLink.jsx";
 import { readReturnContext } from "./return-link/returnTargets.js";
 import { scenarioFor, verticalFor } from "./handoffMap";
@@ -37,6 +38,10 @@ export default function App() {
   const [tab, setTab] = useState(hashParts().tab);
   const [requested, setRequested] = useState(() => hashParts().scenario || scenarioFor(handoff));
   const [presenter, setPresenter] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem("a2a-theme") || "auto");
+  const [fontStep, setFontStep] = useState(() => localStorage.getItem("a2a-font") || "M");
+  useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem("a2a-theme", theme); }, [theme]);
+  useEffect(() => { applyFontSize(fontStep); localStorage.setItem("a2a-font", fontStep); }, [fontStep]);
   const [resetSignal, setResetSignal] = useState(0);
   const [resetMsg, setResetMsg] = useState("");
   const tabsRef = useRef(null);
@@ -94,37 +99,23 @@ export default function App() {
             <h1>A2A Lab</h1>
             {!presenter && story && <p className="intro">{story.intro}</p>}
           </div>
-          <div className="head__tools">
-            <span className="chip" data-testid="mode">Mode: {info ? info.mode : "mock"}{hosted === true ? " (hosted)" : hosted === false ? " (local)" : ""}</span>
-            {!presenter && info && (
-              <button
-                type="button"
-                aria-pressed={info.mode === "real"}
-                data-testid="mode-real"
-                title={info.realAvailable ? "Switch between Mock and Real. Real is owner-run and RESERVED in this build: the toggle reports it, the live-gateway data path is not wired yet." : "Real is not configured: set the A2ALAB_REAL_* environment (owner-run). Mock keeps working."}
-                disabled={!info.realAvailable && info.mode !== "real"}
-                onClick={async () => {
-                  const target = info.mode === "real" ? "mock" : "real";
-                  const res = await setMode(target).catch(() => ({ ok: false }));
-                  if (res.ok) { window.location.reload(); }
-                  else setResetMsg(res.body?.detail || "Could not switch mode.");
-                }}
-              >
-                {info.mode === "real" ? "Real (press to switch to Mock)" : "Mock (press to switch to Real)"}
-              </button>
-            )}
-            {!presenter && (
+          {!presenter && (
               <label className="inline">Vertical{" "}
                 <select value={vertical} onChange={(e) => setVertical(e.target.value)}>
                   {(story ? story.verticals : ["retail"]).map((v) => <option key={v} value={v}>{v}</option>)}
                 </select>
               </label>
             )}
+          <TopMenu
+            mode={{ value: info ? info.mode : "mock", onChange: async (m) => { const res = await setMode(m).catch(() => ({ ok: false })); if (res.ok) window.location.reload(); else setResetMsg(res.body?.detail || "Could not switch mode."); }, realAvailable: info ? info.realAvailable : null }}
+            theme={{ value: theme, onChange: setTheme }}
+            fontSize={{ value: fontStep, onChange: setFontStep }}
+            present={{ active: presenter, onToggle: () => setPresenter((v) => !v) }}
+            help={undefined}
+            onReset={reset}
+          >
             <ReturnLink app="a2a-lab" variant="header" />
-            <ShelfLink />
-            <button type="button" onClick={reset} data-testid="reset">Reset</button>
-            <button type="button" aria-pressed={presenter} onClick={() => setPresenter((v) => !v)} data-testid="presenter">{presenter ? "Exit presenter (Esc)" : "Presenter (P)"}</button>
-          </div>
+          </TopMenu>
         </div>
       </header>
       <main>
