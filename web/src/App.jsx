@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import PolicyGate from "./components/PolicyGate";
 import DiagramTab from "./components/DiagramTab";
 import TalkTrack from "./components/TalkTrack";
+import TalkTrackDialog from "./talk-track/TalkTrackDialog";
 import TopMenu, { applyFontSize } from "./top-menu/TopMenu.jsx";
 import "./top-menu/top-menu.css";
 import ReturnLink from "./return-link/ReturnLink.jsx";
@@ -38,6 +39,7 @@ export default function App() {
   const [tab, setTab] = useState(hashParts().tab);
   const [requested, setRequested] = useState(() => hashParts().scenario || scenarioFor(handoff));
   const [presenter, setPresenter] = useState(false);
+  const [talkOpen, setTalkOpen] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem("a2a-theme") || "auto");
   const [fontStep, setFontStep] = useState(() => localStorage.getItem("a2a-font") || "M");
   useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem("a2a-theme", theme); }, [theme]);
@@ -111,6 +113,7 @@ export default function App() {
             theme={{ value: theme, onChange: setTheme }}
             fontSize={{ value: fontStep, onChange: setFontStep }}
             present={{ active: presenter, onToggle: () => setPresenter((v) => !v) }}
+            talkTrack={{ active: talkOpen, onToggle: () => setTalkOpen((v) => !v) }}
             help={undefined}
             onReset={reset}
           >
@@ -137,6 +140,7 @@ export default function App() {
               {tab === "gate" && <PolicyGate key={vertical} story={story} resetSignal={resetSignal} requestedId={requested} onSelect={pickScenario} />}
               {tab === "diagram" && <DiagramTab vertical={vertical} resetSignal={resetSignal} />}
               {tab === "talk" && <TalkTrack talk={story.talkTrack} />}
+      <TalkTrackDialog isOpen={talkOpen} onClose={() => setTalkOpen(false)} talk={story?.talkTrack || []} />
             </>
           )}
         </div>
