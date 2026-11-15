@@ -9,6 +9,7 @@ import ReturnLink from "./return-link/ReturnLink.jsx";
 import { readReturnContext } from "./return-link/returnTargets.js";
 import { scenarioFor, verticalFor } from "./handoffMap";
 import { getJson, resetWorkspace, setMode } from "./api";
+import VerifyMark from "./components/VerifyMark.jsx";
 
 export const TABS = [
   { id: "gate", label: "Delegation & entitlement" },
@@ -117,6 +118,7 @@ export default function App() {
             help={undefined}
             onReset={reset}
           >
+            <VerifyMark id="a2a-lab" />
             <ReturnLink app="a2a-lab" variant="header" />
           </TopMenu>
         </div>
