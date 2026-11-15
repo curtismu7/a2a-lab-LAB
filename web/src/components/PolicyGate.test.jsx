@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PolicyGate, { Hops, Verdict } from "./PolicyGate";
+import { setJsonView } from "./JsonPane.jsx";
 
 vi.mock("../api", () => ({
   runTool: vi.fn(),
@@ -26,7 +27,7 @@ const STORY = {
   ],
 };
 
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => { vi.clearAllMocks(); setJsonView("form"); });
 
 describe("Verdict", () => {
   it("renders the empty state and the A2A stage wording", () => {
@@ -110,5 +111,48 @@ describe("PolicyGate", () => {
     render(<PolicyGate story={STORY} resetSignal={0} requestedId={null} onSelect={() => {}} />);
     await waitFor(() => expect(screen.getByTestId("agent-card").textContent).toContain("Generalist Banking Agent"));
     expect(screen.getByTestId("facts").textContent).toContain("measured");
+  });
+
+  it("Rule 24: the Agent Card and the scenario input go through JsonPane (Form | JSON), the lab's own keys are hot", async () => {
+    const user = userEvent.setup();
+    render(<PolicyGate story={STORY} resetSignal={0} requestedId={null} onSelect={() => {}} />);
+    const card = await screen.findByTestId("agent-card");
+    // Form view: a label and a value per field, the lab's hot keys marked.
+    expect(card.className).toContain("json--form");
+    const hotKeys = [...card.querySelectorAll('[data-hot="true"] > .jform__k')].map((n) => n.textContent);
+    expect(hotKeys).toEqual(expect.arrayContaining(["name", "skills"]));
+    const scen = screen.getByTestId("scenario-prefs");
+    const scenHot = [...scen.querySelectorAll('[data-hot="true"] > .jform__k')].map((n) => n.textContent);
+    expect(scenHot).toEqual(expect.arrayContaining(["user", "generalist", "specialist", "scope", "expected"]));
+    // JSON view: the exact text, keys in the hot colour, and no capped pane.
+    await user.click(screen.getByTestId("agent-card-raw"));
+    const raw = screen.getByTestId("agent-card");
+    expect(raw.tagName).toBe("PRE");
+    expect(raw.textContent).toContain('"name": "Generalist Banking Agent"');
+    expect(raw.querySelector(".jtok--hot")?.textContent).toBe('"name"');
+    expect(raw.className).not.toMatch(/max|scroll/);
+    expect(screen.getByTestId("agent-card-box").querySelector(".jsonbox__toggle").textContent).toBe("FormJSON");
+  });
+
+  it("Rule 24: a hop's HTTP transcript with a JSON body keeps its headers as text and gives the body its own Form | JSON pane", () => {
+    const request = 'POST https://a2a.example/a2a\nAuthorization: Bearer <delegated: sub=u>\ncontent-type: application/json\n\n{"jsonrpc":"2.0","id":1,"method":"message/send","params":{"skill":"get_portfolio_summary"}}';
+    render(<Hops hops={[{ n: 1, label: "one", request, response: "traceparent: 00-aa-bb-01" }]} traceId="abc" />);
+    const head = screen.getByLabelText("Request of hop 1 headers");
+    expect(head.tagName).toBe("PRE");
+    expect(head.textContent).toContain("Authorization: Bearer <delegated: sub=u>");
+    expect(head.textContent).not.toContain("jsonrpc");
+    const body = screen.getByLabelText("Request of hop 1 body");
+    expect(body.className).toContain("json--form");
+    const hot = [...body.querySelectorAll('[data-hot="true"] > .jform__k')].map((n) => n.textContent);
+    expect(hot).toEqual(expect.arrayContaining(["method"]));
+    expect(screen.getByRole("group", { name: "Request of hop 1 body view" }).textContent).toBe("FormJSON");
+  });
+
+  it("Rule 24: a hop's raw text that is not JSON stays text through JsonPane (no Form | JSON toggle)", () => {
+    render(<Hops hops={[{ n: 1, label: "one", request: "POST https://a2a.example/a2a\ncontent-type: application/json", response: "HTTP/1.1 200" }]} traceId="abc" />);
+    const box = screen.getByTestId("hops").querySelector(".jsonbox");
+    expect(box.getAttribute("data-view")).toBe("text");
+    expect(box.querySelector(".jsonbox__toggle")).toBeNull();
+    expect(box.querySelector("pre").textContent).toContain("POST https://a2a.example/a2a");
   });
 });

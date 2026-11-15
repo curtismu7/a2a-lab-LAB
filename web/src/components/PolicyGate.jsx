@@ -13,7 +13,7 @@ export function Hops({ hops, traceId }) {
       {hops.map((h) => (
         <details key={h.n} open={h.n === 1}>
           <summary>{h.n}. {h.label}</summary>
-          <p className="muted">Request</p><Json value={h.request} label={`Request of hop ${h.n}`} />
+          <p className="muted">Request</p><Json value={h.request} label={`Request of hop ${h.n}`} hot={["method", "skill"]} />
           <p className="muted">Response</p><Json value={h.response} label={`Response of hop ${h.n}`} />
         </details>
       ))}
@@ -147,7 +147,7 @@ function AgentCardPanel() {
     <section className="panel" aria-labelledby="card-h" data-testid="agent-card-panel">
       <h2 id="card-h">Agent Card (UC2.7)</h2>
       <p className="muted">The well-known discovery document of the A2A protocol. The TOOL call is what requires the bearer — a call without one is a real 401 before anything else.</p>
-      {card ? <Json value={card} label="Agent Card" testId="agent-card" /> : <p className="muted">Could not load the card.</p>}
+      {card ? <Json value={card} label="Agent Card" testId="agent-card" hot={["name", "url", "skills"]} /> : <p className="muted">Could not load the card.</p>}
     </section>
   );
 }
@@ -212,7 +212,7 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect }
       <section className="panel" aria-labelledby="scen-h">
         <h2 id="scen-h">Scenario (decoded)</h2>
         <p className="tag tag--warn">{story.tokenLabel}</p>
-        <Json value={{ user: scenario.user, generalist: scenario.generalist, specialist: scenario.specialist, scope: scenario.scope, protocolProbe: scenario.protocolProbe, expected: scenario.expected }} label="Scenario input" testId="scenario-prefs" />
+        <Json value={{ user: scenario.user, generalist: scenario.generalist, specialist: scenario.specialist, scope: scenario.scope, protocolProbe: scenario.protocolProbe, expected: scenario.expected }} label="Scenario input" testId="scenario-prefs" hot={["user", "generalist", "specialist", "protocolProbe", "expected"]} />
         <h3>What we know, and how well</h3>
         <ul className="facts" data-testid="facts">
           {story.facts.map((f) => <li key={f.id}><span className={STATUS_CLASS[f.status] || "tag"}>{f.status}</span> {visible(f.text)} <span className="muted">({visible(f.source)})</span></li>)}
