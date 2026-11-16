@@ -89,7 +89,7 @@ function AgentCall({ tools, onResult, user }) {
       <label htmlFor="call-scope">Requested scope (narrowed at exchange #2)</label>
       <input id="call-scope" type="text" maxLength={200} value={scope} onChange={(e) => setScope(e.target.value)} data-testid="call-scope" />
       <div className="seg" role="group" aria-label="Handoff steps">
-        <button type="button" onClick={doExchangeOne} data-testid="ex1-run">1. Consent &amp; exchange</button>
+        <button type="button" className="primary" onClick={doExchangeOne} data-testid="ex1-run">1. Consent &amp; exchange</button>
         <button type="button" onClick={doExchangeTwo} disabled={!t1} data-testid="ex2-run">2. Handoff to specialist</button>
         <button type="button" onClick={call} disabled={!t2} data-testid="call-run">3. Call as the specialist</button>
       </div>
