@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import PolicyGate from "./components/PolicyGate";
 import DiagramTab from "./components/DiagramTab";
 import TalkTrack from "./components/TalkTrack";
@@ -47,7 +47,6 @@ export default function App() {
   useEffect(() => { applyFontSize(fontStep); localStorage.setItem("a2a-font", fontStep); }, [fontStep]);
   const [resetSignal, setResetSignal] = useState(0);
   const [resetMsg, setResetMsg] = useState("");
-  const tabsRef = useRef(null);
 
   useEffect(() => { getJson("/api/info").then(setInfo, () => setInfo(null)); }, []);
   useEffect(() => { getJson(`/api/scenarios?vertical=${encodeURIComponent(vertical)}`).then((j) => { setStory(j); setError(null); }, (e) => setError(e.message)); }, [vertical]);
@@ -58,14 +57,6 @@ export default function App() {
   }, []);
   const select = (id) => { setTab(id); setRequested(null); try { window.history.replaceState(null, "", `#${id}`); } catch { /* ignore */ } };
   const pickScenario = (sid) => { try { window.history.replaceState(null, "", `#scenario-${sid}`); } catch { /* ignore */ } };
-
-  // Keep the active tab fully in view in the scrolling tab strip (375px).
-  useEffect(() => {
-    const strip = tabsRef.current; const el = document.getElementById(`tab-${tab}`);
-    if (!strip || !el) return;
-    const left = el.offsetLeft - strip.offsetLeft;
-    if (left < strip.scrollLeft || left + el.offsetWidth > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = Math.max(0, left - 8);
-  }, [tab]);
 
   useEffect(() => {
     const on = (e) => {
@@ -83,56 +74,54 @@ export default function App() {
     setResetMsg(ok ? "Reset: your workspace's directory flips and runs are back to defaults." : "Reset failed on the server; the view was reset.");
   }, []);
 
-  const onKeyTab = (e, i) => {
-    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-    const next = TABS[(i + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length];
-    select(next.id);
-    document.getElementById(`tab-${next.id}`)?.focus();
-  };
-
   const hosted = story ? !!story.hosted : info ? !!info.hosted : null;
   const banner = story ? story.banner : hosted === true ? BANNER_HOSTED : hosted === false ? BANNER_LOCAL : BANNER_UNKNOWN;
   return (
     <div className={`app${presenter ? " app--presenter" : ""}`}>
-      <header>
+      <header className="shell-bar">
+        <span className="shell-brand">
+          <span className="shell-logo" aria-hidden="true">A2A</span>
+          <h1>A2A Lab</h1>
+          {info && info.mode === "real"
+            ? <span className="shell-badge shell-badge--real" data-testid="mode-badge">Real</span>
+            : <span className="shell-badge" data-testid="mode-badge">Mock</span>}
+        </span>
+        <nav className="shell-nav" aria-label="Lab sections">
+          {TABS.map((t) => (
+            <a key={t.id} href={`#${t.id}`} aria-current={tab === t.id ? "page" : undefined}
+              onClick={(e) => { e.preventDefault(); select(t.id); }}>{t.label}</a>
+          ))}
+        </nav>
+        <TopMenu
+          mode={{ value: info ? info.mode : "mock", onChange: async (m) => { const res = await setMode(m).catch(() => ({ ok: false })); if (res.ok) window.location.reload(); else setResetMsg(res.body?.detail || "Could not switch mode."); }, realAvailable: info ? info.realAvailable : null }}
+          theme={{ value: theme, onChange: setTheme }}
+          fontSize={{ value: fontStep, onChange: setFontStep }}
+          present={{ active: presenter, onToggle: () => setPresenter((v) => !v) }}
+          talkTrack={{ active: talkOpen, onToggle: () => setTalkOpen((v) => !v) }}
+          help={undefined}
+          onReset={reset}
+        >
+          <VerifyMark id="a2a-lab" />
+          <ReturnLink app="a2a-lab" variant="header" />
+        </TopMenu>
+      </header>
+      <main className="page">
         <p className="banner" role="status" data-testid="banner">{banner}</p>
         <ReturnLink app="a2a-lab" />
-        <div className="head">
-          <div>
-            <h1>A2A Lab</h1>
-            {!presenter && story && <p className="intro">{story.intro}</p>}
-          </div>
-          {!presenter && (
-              <label className="inline">Vertical{" "}
-                <select value={vertical} onChange={(e) => setVertical(e.target.value)}>
-                  {(story ? story.verticals : ["retail"]).map((v) => <option key={v} value={v}>{v}</option>)}
-                </select>
-              </label>
-            )}
-          <TopMenu
-            mode={{ value: info ? info.mode : "mock", onChange: async (m) => { const res = await setMode(m).catch(() => ({ ok: false })); if (res.ok) window.location.reload(); else setResetMsg(res.body?.detail || "Could not switch mode."); }, realAvailable: info ? info.realAvailable : null }}
-            theme={{ value: theme, onChange: setTheme }}
-            fontSize={{ value: fontStep, onChange: setFontStep }}
-            present={{ active: presenter, onToggle: () => setPresenter((v) => !v) }}
-            talkTrack={{ active: talkOpen, onToggle: () => setTalkOpen((v) => !v) }}
-            help={undefined}
-            onReset={reset}
-          >
-            <VerifyMark id="a2a-lab" />
-            <ReturnLink app="a2a-lab" variant="header" />
-          </TopMenu>
-        </div>
-      </header>
-      <main>
+        {error && <p className="app-error" role="alert">Could not load the lab ({error}). Is the server running?</p>}
         <p className="sr-only" role="status" aria-live="polite">{resetMsg}</p>
-        <div role="tablist" aria-label="Lab sections" className="tabs" ref={tabsRef}>
-          {TABS.map((t, i) => (
-            <button key={t.id} id={`tab-${t.id}`} role="tab" type="button" aria-selected={tab === t.id} aria-controls={`panel-${t.id}`} tabIndex={tab === t.id ? 0 : -1}
-              onClick={() => select(t.id)} onKeyDown={(e) => onKeyTab(e, i)}>{t.label}</button>
-          ))}
-        </div>
-        <div id={`panel-${tab}`} role="tabpanel" aria-labelledby={`tab-${tab}`}>
-          {error ? <p className="app-error" role="alert">Could not load the lab ({error}). Is the server running?</p> : !story ? <p className="muted">Loading...</p> : (
+        {!presenter && (
+          <div className="page-head">
+            {story && <p className="intro">{story.intro}</p>}
+            <label className="inline">Vertical{" "}
+              <select value={vertical} onChange={(e) => setVertical(e.target.value)}>
+                {(story ? story.verticals : ["retail"]).map((v) => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </label>
+          </div>
+        )}
+        <div id={`panel-${tab}`}>
+          {error ? null : !story ? <p className="muted">Loading...</p> : (
             <>
               {presenter && tab !== "talk" && (
                 <aside className="presenter-say" data-testid="presenter-say" aria-label="Talk track">

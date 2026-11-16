@@ -33,6 +33,8 @@ describe("hand-off from Customer Agent LAB", () => {
     expect(screen.getByRole("note", { name: "Opened from Customer Agent LAB" }).textContent).toContain("UC2.6");
     expect(screen.getByTestId("banner").nextElementSibling).toBe(screen.getByRole("note", { name: "Opened from Customer Agent LAB" })); // banner first, strip right below
     expect(screen.getAllByRole("button", { name: /Back to Customer Agent LAB/ })).toHaveLength(2);
+    expect(document.querySelector("header.shell-bar .shell-right button.return-link--header")).not.toBeNull(); // header Back in the shell bar TopMenu
+    expect(document.querySelector("main").firstElementChild).toBe(screen.getByTestId("banner")); // shell bar first, then main with the banner first
     await waitFor(() => expect(screen.getByTestId("pg").textContent).toBe("a2a-unregistered"));
     expect(calls).toContain("/api/scenarios?vertical=finance");
   });
