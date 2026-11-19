@@ -10,6 +10,7 @@ export function Hops({ hops, traceId }) {
   return (
     <section aria-label="Mock hops with traceparent" data-testid="hops">
       <h3>Hops (W3C traceparent) <span className="muted">trace {traceId}</span></h3>
+      <div className="hops-grid">
       {hops.map((h) => (
         <details key={h.n} open={h.n === 1}>
           <summary>{h.n}. {h.label}</summary>
@@ -17,6 +18,7 @@ export function Hops({ hops, traceId }) {
           <p className="muted">Response</p><Json value={h.response} label={`Response of hop ${h.n}`} />
         </details>
       ))}
+      </div>
     </section>
   );
 }
@@ -78,26 +80,38 @@ function AgentCall({ tools, onResult, user }) {
   const chain = (t) => t ? `sub=${t.sub} -> act={${t.act.sub}${t.act.act ? ` -> ${t.act.act.sub}` : ""}}` : null;
   return (
     <section className="panel" aria-labelledby="call-h" data-testid="agent-call">
-      <h2 id="call-h">The A2A handoff</h2>
+      <h2 id="call-h"><span className="step-num" aria-hidden="true">2</span>The A2A handoff</h2>
       <p className="muted">Two RFC 8693 exchanges build the nested act chain — act=&#123;specialist, act:&#123;generalist&#125;&#125; — then the gateway routes the specialist call only when the SPECIALIST is registered.</p>
-      <label htmlFor="call-user">Acting for (token sub)</label>
-      <input id="call-user" type="text" maxLength={64} defaultValue={user} data-testid="call-user" />
-      <label htmlFor="call-generalist">Generalist (exchange #1 actor)</label>
-      <input id="call-generalist" type="text" maxLength={64} value={generalist} onChange={(e) => setGeneralist(e.target.value)} data-testid="call-generalist" />
-      <label htmlFor="call-specialist">Specialist (exchange #2 actor)</label>
-      <input id="call-specialist" type="text" maxLength={64} value={specialist} onChange={(e) => setSpecialist(e.target.value)} data-testid="call-specialist" />
-      <label htmlFor="call-scope">Requested scope (narrowed at exchange #2)</label>
-      <input id="call-scope" type="text" maxLength={200} value={scope} onChange={(e) => setScope(e.target.value)} data-testid="call-scope" />
-      <div className="seg" role="group" aria-label="Handoff steps">
-        <button type="button" className="primary" onClick={doExchangeOne} data-testid="ex1-run">1. Consent &amp; exchange</button>
-        <button type="button" onClick={doExchangeTwo} disabled={!t1} data-testid="ex2-run">2. Handoff to specialist</button>
-        <button type="button" onClick={call} disabled={!t2} data-testid="call-run">3. Call as the specialist</button>
+      <div className="agent-call-grid">
+        <div>
+          <label htmlFor="call-user">Acting for (token sub)</label>
+          <input id="call-user" type="text" maxLength={64} defaultValue={user} data-testid="call-user" />
+        </div>
+        <div>
+          <label htmlFor="call-generalist">Generalist (exchange #1 actor)</label>
+          <input id="call-generalist" type="text" maxLength={64} value={generalist} onChange={(e) => setGeneralist(e.target.value)} data-testid="call-generalist" />
+        </div>
+        <div>
+          <label htmlFor="call-specialist">Specialist (exchange #2 actor)</label>
+          <input id="call-specialist" type="text" maxLength={64} value={specialist} onChange={(e) => setSpecialist(e.target.value)} data-testid="call-specialist" />
+        </div>
+        <div>
+          <label htmlFor="call-scope">Requested scope (narrowed at exchange #2)</label>
+          <input id="call-scope" type="text" maxLength={200} value={scope} onChange={(e) => setScope(e.target.value)} data-testid="call-scope" />
+        </div>
       </div>
-      <ol className="facts" data-testid="chain-view">
-        <li>Exchange #1: <code>{chain(t1) || "(not minted)"}</code></li>
-        <li>Exchange #2: <code>{chain(t2) || "(not minted)"}</code></li>
-        <li>Scope granted to the specialist: <code>{t2 ? t2.scope || "(narrowed away)" : "—"}</code></li>
-      </ol>
+      <div className="agent-call-bottom">
+        <div className="seg" role="group" aria-label="Handoff steps">
+          <button type="button" className="primary" onClick={doExchangeOne} data-testid="ex1-run">1. Consent &amp; exchange</button>
+          <button type="button" onClick={doExchangeTwo} disabled={!t1} data-testid="ex2-run">2. Handoff to specialist</button>
+          <button type="button" onClick={call} disabled={!t2} data-testid="call-run">3. Call as the specialist</button>
+        </div>
+        <ol className="facts" data-testid="chain-view">
+          <li>Exchange #1: <code>{chain(t1) || "(not minted)"}</code></li>
+          <li>Exchange #2: <code>{chain(t2) || "(not minted)"}</code></li>
+          <li>Scope granted to the specialist: <code>{t2 ? t2.scope || "(narrowed away)" : "—"}</code></li>
+        </ol>
+      </div>
       {fail && <p className="field-error" role="alert">{fail}</p>}
     </section>
   );
@@ -121,7 +135,7 @@ function RegistryBoard({ onChanged }) {
   };
   return (
     <section className="panel" aria-labelledby="reg-h" data-testid="registry-board">
-      <h2 id="reg-h">Agent Card registry (UC2.6)</h2>
+      <h2 id="reg-h"><span className="step-num" aria-hidden="true">4</span>Agent Card registry (UC2.6)</h2>
       <p className="muted">The registry is read on EVERY decision — authorization keys on WHO is acting, not just who they act for. Register or revoke a specialist and the next handoff moves. Flips are per workspace.</p>
       <label htmlFor="reg-name">Specialist</label>
       <input id="reg-name" type="text" maxLength={64} value={name} onChange={(e) => setName(e.target.value)} data-testid="reg-name" />
@@ -145,7 +159,7 @@ function AgentCardPanel() {
   useEffect(() => { getAgentCard().then(setCard, () => setCard(null)); }, []);
   return (
     <section className="panel" aria-labelledby="card-h" data-testid="agent-card-panel">
-      <h2 id="card-h">Agent Card (UC2.7)</h2>
+      <h2 id="card-h"><span className="step-num" aria-hidden="true">5</span>Agent Card (UC2.7)</h2>
       <p className="muted">The well-known discovery document of the A2A protocol. The TOOL call is what requires the bearer — a call without one is a real 401 before anything else.</p>
       {card ? <Json value={card} label="Agent Card" testId="agent-card" hot={["name", "url", "skills"]} /> : <p className="muted">Could not load the card.</p>}
     </section>
@@ -194,23 +208,25 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect }
   return (
     <div className="gate">
       <section className="panel" aria-labelledby="sc-h">
-        <h2 id="sc-h">Scenarios</h2>
+        <h2><span className="step-num" aria-hidden="true">1</span>Scenarios</h2>
         <div className="seg" role="group" aria-label="Scenario">
           {story.scenarios.map((s) => <button key={s.id} type="button" aria-pressed={s.id === id} onClick={() => { setId(s.id); if (onSelect) onSelect(s.id); }}>{s.title}</button>)}
         </div>
         <p className="lesson" data-testid="lesson">{scenario.lesson}</p>
       </section>
+      <AgentCall tools={story.tools} onResult={(r) => setRun(r)} user="demoUser" />
       <section className="panel" aria-labelledby="res-h">
-        <h2 id="res-h">Decision</h2>
+        <h2><span className="step-num" aria-hidden="true">3</span>Decision</h2>
         {fail && <p className="field-error" role="alert">{fail}</p>}
         <Verdict run={run} />
         {run && <Hops hops={run.hops} traceId={run.traceId} />}
       </section>
-      <AgentCall tools={story.tools} onResult={(r) => setRun(r)} user="demoUser" />
-      <RegistryBoard onChanged={() => setBoardTick((n) => n + 1)} />
-      <AgentCardPanel />
+      <div className="duo">
+        <RegistryBoard onChanged={() => setBoardTick((n) => n + 1)} />
+        <AgentCardPanel />
+      </div>
       <section className="panel" aria-labelledby="scen-h">
-        <h2 id="scen-h">Scenario (decoded)</h2>
+        <h2><span className="step-num" aria-hidden="true">6</span>Scenario (decoded)</h2>
         <p className="tag tag--warn">{story.tokenLabel}</p>
         <Json value={{ user: scenario.user, generalist: scenario.generalist, specialist: scenario.specialist, scope: scenario.scope, protocolProbe: scenario.protocolProbe, expected: scenario.expected }} label="Scenario input" testId="scenario-prefs" hot={["user", "generalist", "specialist", "protocolProbe", "expected"]} />
         <h3>What we know, and how well</h3>
