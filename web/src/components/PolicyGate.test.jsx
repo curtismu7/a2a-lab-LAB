@@ -123,7 +123,8 @@ describe("PolicyGate", () => {
     expect(hotKeys).toEqual(expect.arrayContaining(["name", "skills"]));
     const scen = screen.getByTestId("scenario-prefs");
     const scenHot = [...scen.querySelectorAll('[data-hot="true"] > .jform__k')].map((n) => n.textContent);
-    expect(scenHot).toEqual(expect.arrayContaining(["user", "generalist", "specialist", "scope", "expected"]));
+    expect(scenHot).toEqual(expect.arrayContaining(["specialist", "scope", "expected"]));
+    expect(scenHot).not.toContain("user");
     // JSON view: the exact text, keys in the hot colour, and no capped pane.
     await user.click(screen.getByTestId("agent-card-raw"));
     const raw = screen.getByTestId("agent-card");
