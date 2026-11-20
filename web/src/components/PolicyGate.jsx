@@ -228,7 +228,7 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect }
       <section className="panel" aria-labelledby="scen-h">
         <h2><span className="step-num" aria-hidden="true">6</span>Scenario (decoded)</h2>
         <p className="tag tag--warn">{story.tokenLabel}</p>
-        <Json value={{ user: scenario.user, generalist: scenario.generalist, specialist: scenario.specialist, scope: scenario.scope, protocolProbe: scenario.protocolProbe, expected: scenario.expected }} label="Scenario input" testId="scenario-prefs" hot={["user", "generalist", "specialist", "protocolProbe", "expected"]} />
+        <Json value={{ user: scenario.user, generalist: scenario.generalist, specialist: scenario.specialist, scope: scenario.scope, protocolProbe: scenario.protocolProbe, expected: scenario.expected }} label="Scenario input" testId="scenario-prefs" hot={["specialist", "expected"]} />
         <h3>What we know, and how well</h3>
         <ul className="facts" data-testid="facts">
           {story.facts.map((f) => <li key={f.id}><span className={STATUS_CLASS[f.status] || "tag"}>{f.status}</span> {visible(f.text)} <span className="muted">({visible(f.source)})</span></li>)}
