@@ -11,7 +11,7 @@ services:
     environment:
       PORT: "7700"
       A2ALAB_BIND: 0.0.0.0
-      SHELF_URL: ${SHELF_URL:-http://127.0.0.1:4400}
+      SHELF_URL: ${SHELF_URL:-https://local.ping-devops.com:8443/demo-shelf}
       LAB_ALLOWED_HOSTS: ${LAB_ALLOWED_HOSTS:-a2a-lab.local.ping-devops.com}
     read_only: true
     cap_drop: [ALL]
