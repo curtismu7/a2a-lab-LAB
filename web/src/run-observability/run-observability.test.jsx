@@ -166,18 +166,51 @@ describe("RunObservability", () => {
     expect(screen.getAllByTestId(/^ro-row-.*-line$/)).toHaveLength(6);
   });
 
-  test("aria-controls only points at a row that exists (none while collapsed), and the table keeps its roles for Safari", () => {
+  test("aria-controls only points at a row that exists (none while collapsed)", () => {
     render(<RunObservability record={realRecord} source="real" />);
     const btn = within(screen.getByTestId("ro-row-r1-line")).getByRole("button");
     expect(btn).not.toHaveAttribute("aria-controls");
     fireEvent.click(btn);
     expect(document.getElementById(btn.getAttribute("aria-controls"))).not.toBeNull();
-    const table = screen.getByTestId("ro-table");
-    expect(table).toHaveAttribute("role", "table");
-    expect(table.querySelectorAll('[role="rowgroup"]')).toHaveLength(2);
-    expect(table.querySelectorAll('[role="columnheader"]')).toHaveLength(6);
-    expect(table.querySelectorAll('tr:not([role="row"])')).toHaveLength(0);
-    expect(table.querySelectorAll('td:not([role="cell"])')).toHaveLength(0);
+  });
+
+  test("the table keeps its native semantics on a wide screen (no redundant roles) and gets table roles where the CSS turns it into blocks", () => {
+    const { unmount } = render(<RunObservability record={realRecord} source="real" />);
+    const wide = screen.getByTestId("ro-table");
+    expect(wide).not.toHaveAttribute("role");
+    expect(wide.querySelectorAll("[role]")).toHaveLength(0);
+    unmount();
+    const original = window.matchMedia;
+    window.matchMedia = () => ({ matches: true, addEventListener() {}, removeEventListener() {} });
+    try {
+      render(<RunObservability record={realRecord} source="real" />);
+      const table = screen.getByTestId("ro-table");
+      expect(table).toHaveAttribute("role", "table");
+      expect(table.querySelectorAll('[role="rowgroup"]')).toHaveLength(2);
+      expect(table.querySelectorAll('[role="columnheader"]')).toHaveLength(6);
+      expect(table.querySelectorAll('tr:not([role="row"])')).toHaveLength(0);
+      expect(table.querySelectorAll('td:not([role="cell"])')).toHaveLength(0);
+    } finally { window.matchMedia = original; }
+  });
+
+  test("the panel is keyed by the run id: a new run resets, the same run keeps its open rows; a repeated row id cannot collide", () => {
+    const { rerender } = render(<RunObservability record={realRecord} source="real" />);
+    fireEvent.click(within(screen.getByTestId("ro-row-r1-line")).getByRole("button"));
+    rerender(<RunObservability record={{ ...realRecord }} source="real" />);
+    expect(screen.getByTestId("ro-detail-r1")).toBeInTheDocument();
+    rerender(<RunObservability record={{ ...realRecord, runId: "run-3" }} source="real" />);
+    expect(screen.queryByTestId("ro-detail-r1")).toBeNull();
+    const dup = { ...realRecord, runId: "run-dup", rows: realRecord.rows.map((r) => ({ ...r, id: "same" })) };
+    rerender(<RunObservability record={dup} source="real" />);
+    expect(screen.getAllByTestId(/^ro-row-.*-line$/)).toHaveLength(6);
+    fireEvent.click(within(screen.getAllByTestId(/^ro-row-.*-line$/)[0]).getByRole("button"));
+    expect(document.querySelectorAll("tr.ro-xrow")).toHaveLength(1);
+  });
+
+  test("an UNVERIFIED-shape row is counted as information in the summary, whatever outcome it carries, and says so", () => {
+    render(<RunObservability record={realRecord} source="real" />);
+    expect(screen.getByTestId("ro-summary")).toHaveTextContent("1 allowed, 1 refused, 1 blocked, 2 for information (information is not a pass; 1 UNVERIFIED-shape row is counted here whatever outcome it carries)");
+    expect(screen.getByTestId("ro-row-r5-line")).toHaveTextContent("REFUSED");
   });
 
   test("a partial search says absence is not proof: the chip reads Not found (partial search), and the reason is shown", () => {

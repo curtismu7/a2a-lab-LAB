@@ -16,7 +16,9 @@ test('every vendored run-observability file matches its pin, and the core is pre
 
 test('this lab reads no logs: no readers file, so nothing here needs fetch, node:http or node:fs for observability', () => {
   assert.ok(!fs.existsSync(path.join(root, 'server/src/runObservabilityReaders.js')));
-  assert.ok(!/^\s*import\s/m.test(fs.readFileSync(path.join(root, 'server/src/runObservability.js'), 'utf8')), 'the core has no imports');
+  const core = fs.readFileSync(path.join(root, 'server/src/runObservability.js'), 'utf8');
+  assert.ok(!/^\s*import\s/m.test(core), 'the core has no imports');
+  assert.ok(!/ElasticsearchReader|DockerLogReader|readersFromEnv|\bfetch\s*\(|node:http|node:fs/.test(core), 'the core names no reader, no network and no file access, not even in a comment');
 });
 
 test('compose never mounts the Docker socket and passes no run-observability settings (nothing reads them: Real is reserved)', () => {

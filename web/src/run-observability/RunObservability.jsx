@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Json from "../components/JsonPane";
 import "./run-observability.css";
 
@@ -17,7 +17,7 @@ import "./run-observability.css";
     coverage: { person|agent|authorize|privilege|gateway|resource: "logged"|"simulated"|"response"|"not-logged"|"unreachable" },
     reasons: { <layer>: string },                (why a layer is not-logged or unreachable)
     partial: { <layer>: true },                  (the search was cut at its cap: a not-logged layer is then "Not found (partial search)", absence is not proof)
-    summary: { allowed, refused, blocked, info }
+    summary: { allowed, refused, blocked, info, unverified }   (an UNVERIFIED-shape row is counted in info and unverified, never in allowed/refused/blocked)
   }
   `source` is required: a page that omits it, or passes anything but "mock" or "real", gets an alert instead of a panel (a lab bug, never a guess).
   A lab's API that failed answers { error, message } (Rule 23): pass that as the record and the panel shows it.
@@ -60,10 +60,40 @@ const txt = (v) => {
 };
 const timeOf = (r) => (r.at ? r.atExact || r.at : "no timestamp");
 const byTime = (a, b) => (a.at && b.at ? Date.parse(a.at) - Date.parse(b.at) : a.at ? -1 : b.at ? 1 : 0);
-// A new record (a new run, a re-run) starts a clean panel: open rows and the layer filter belong to the record they were set on.
-const ids = new WeakMap(); let seq = 0;
-const keyOf = (r) => (r && typeof r === "object" ? (ids.get(r) ?? (ids.set(r, ++seq), seq)) : "none");
-const normRow = (r, i) => ({ ...r, id: txt(r.id) || `row-${i}`, layer: txt(r.layer), product: txt(r.product), message: txt(r.message), outcome: txt(r.outcome), origin: txt(r.origin), at: r.at ? txt(r.at) : null, atExact: r.atExact ? txt(r.atExact) : undefined });
+// A new run starts a clean panel: open rows and the layer filter belong to the run they were set on, so the panel is keyed by the run id
+// (a record without one falls back to the record object itself).
+const objIds = new WeakMap(); let seq = 0;
+const keyOf = (r) => {
+  if (!r || typeof r !== "object") return "none";
+  if (typeof r.runId === "string" && r.runId) return `run:${r.runId}`;
+  return `obj:${objIds.get(r) ?? (objIds.set(r, ++seq), seq)}`;
+};
+// Row ids are only trusted when unique: a repeated or missing id gets the row's position, so keys, open state and test ids never collide.
+const normRows = (list) => {
+  const used = new Set();
+  return list.filter((r) => r && typeof r === "object").map((r, i) => {
+    let id = txt(r.id) || `row-${i}`;
+    if (used.has(id)) id = `${id}-${i}`;
+    used.add(id);
+    return { ...r, id, layer: txt(r.layer), product: txt(r.product), message: txt(r.message), outcome: txt(r.outcome), origin: txt(r.origin), at: r.at ? txt(r.at) : null, atExact: r.atExact ? txt(r.atExact) : undefined };
+  });
+};
+// The table keeps its native semantics. Only where the CSS turns table parts into blocks (narrow screens) do the ARIA roles go on, because some
+// browsers drop the table semantics of a display:block table.
+const NARROW = "(max-width: 760px)";
+function useNarrow() {
+  const get = () => (typeof window !== "undefined" && typeof window.matchMedia === "function" ? window.matchMedia(NARROW).matches : false);
+  const [narrow, setNarrow] = useState(get);
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return undefined;
+    const mq = window.matchMedia(NARROW);
+    const on = () => setNarrow(mq.matches);
+    on();
+    mq.addEventListener?.("change", on);
+    return () => mq.removeEventListener?.("change", on);
+  }, []);
+  return narrow;
+}
 
 function Lane({ layer, rows, coverage, reason, partial, active, onPick }) {
   const own = rows.filter((r) => r.layer === layer.id && r.origin !== "not-logged");
@@ -142,7 +172,9 @@ function Panel({ record, source: given, streams, title = "What each layer logged
   const [open, setOpen] = useState(() => new Set());
   const keys = Array.isArray(hot) ? hot : HOT;
   const source = given === "mock" || given === "real" ? given : null;
-  const rows = useMemo(() => (Array.isArray(record?.rows) ? record.rows.filter((r) => r && typeof r === "object").map(normRow).sort(byTime) : []), [record]);
+  const narrow = useNarrow();
+  const role = (r) => (narrow ? r : undefined);
+  const rows = useMemo(() => (Array.isArray(record?.rows) ? normRows(record.rows).sort(byTime) : []), [record]);
   const shown = layer ? rows.filter((r) => r.layer === layer) : rows;
   const toggle = (id) => setOpen((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
@@ -181,13 +213,16 @@ function Panel({ record, source: given, streams, title = "What each layer logged
     );
   } else {
     const counted = rows.filter((r) => r.origin !== "not-logged");
-    const n = (o) => counted.filter((r) => r.outcome === o).length;
+    // A row whose line shape is UNVERIFIED keeps its own outcome on the row, but is counted as information here, never as allowed, refused or blocked.
+    const unverified = counted.filter((r) => r.basis === "unverified-shape").length;
+    const n = (o) => counted.filter((r) => r.basis !== "unverified-shape" && r.outcome === o).length;
+    const info = counted.filter((r) => r.basis === "unverified-shape" || r.outcome === "info").length;
     body = (
       <>
         <p className="ro-summary" data-testid="ro-summary">
           {counted.length === 0
             ? "No log lines in this excerpt."
-            : `${n("allowed")} allowed, ${n("refused")} refused, ${n("blocked")} blocked, ${n("info")} for information (information is not a pass).`}
+            : `${n("allowed")} allowed, ${n("refused")} refused, ${n("blocked")} blocked, ${info} for information (information is not a pass${unverified ? `; ${unverified} UNVERIFIED-shape ${unverified === 1 ? "row is" : "rows are"} counted here whatever outcome ${unverified === 1 ? "it carries" : "they carry"}` : ""}).`}
           {" "}Window {txt(record.window?.from)} to {txt(record.window?.to)}.
         </p>
         <Legend />
@@ -207,33 +242,34 @@ function Panel({ record, source: given, streams, title = "What each layer logged
         {shown.length === 0
           ? <p className="ro-muted" data-testid="ro-no-rows">No rows to show. The layers above say why: a layer that is not logged or unreachable has no lines.</p>
           : (
-            <table className="ro-table" data-testid="ro-table" role="table">
-              <thead role="rowgroup">
-                <tr role="row">{["Time", "Layer", "Product", "Outcome", "Message", "Origin"].map((h) => <th key={h} scope="col" role="columnheader">{h}</th>)}</tr>
+            <table className="ro-table" data-testid="ro-table" role={role("table")}>
+              <thead role={role("rowgroup")}>
+                <tr role={role("row")}>{["Time", "Layer", "Product", "Outcome", "Message", "Origin"].map((h) => <th key={h} scope="col" role={role("columnheader")}>{h}</th>)}</tr>
               </thead>
-              <tbody role="rowgroup">
+              <tbody role={role("rowgroup")}>
                 {shown.map((r) => {
                   const isOpen = open.has(r.id);
                   return (
                     <React.Fragment key={r.id}>
-                      <tr role="row" className="ro-row" data-testid={`ro-row-${r.id}-line`} data-layer={r.layer} data-outcome={r.outcome} data-origin={r.origin}>
-                        <td role="cell" data-label="Time" className="ro-time">
+                      <tr role={role("row")} className="ro-row" data-testid={`ro-row-${r.id}-line`} data-layer={r.layer} data-outcome={r.outcome} data-origin={r.origin}>
+                        <td role={role("cell")} data-label="Time" className="ro-time">
                           <button type="button" className="ro-expand" aria-expanded={isOpen} aria-controls={isOpen ? `ro-x-${r.id}` : undefined} onClick={() => toggle(r.id)}>
                             <span aria-hidden="true">{isOpen ? "▾" : "▸"}</span> {timeOf(r)}
                           </button>
                         </td>
-                        <td role="cell" data-label="Layer">{LABEL[r.layer] || r.layer}</td>
-                        <td role="cell" data-label="Product">{r.product}</td>
-                        <td role="cell" data-label="Outcome"><span className="ro-chip" data-outcome={r.outcome}>{OUTCOME_LABEL[r.outcome] || r.outcome}</span></td>
-                        <td role="cell" data-label="Message" className="ro-msg">{r.message}</td>
-                        <td role="cell" data-label="Origin">
+                        <td role={role("cell")} data-label="Layer">{LABEL[r.layer] || r.layer}</td>
+                        <td role={role("cell")} data-label="Product">{r.product}</td>
+                        <td role={role("cell")} data-label="Outcome"><span className="ro-chip" data-outcome={r.outcome}>{OUTCOME_LABEL[r.outcome] || r.outcome}</span></td>
+                        <td role={role("cell")} data-label="Message" className="ro-msg">{r.message}</td>
+                        <td role={role("cell")} data-label="Origin">
                           <span className="ro-chip" data-origin={r.origin}>{ORIGIN_LABEL[r.origin] || r.origin}</span>
                           {r.basis === "unverified-shape" && <span className="ro-tag">UNVERIFIED shape</span>}
                           {r.matchedBy === "window" && <span className="ro-tag">time window</span>}
+                          {r.multiline && <span className="ro-tag">multi-line entry</span>}
                         </td>
                       </tr>
                       {isOpen && (
-                        <tr role="row" className="ro-xrow" id={`ro-x-${r.id}`}><td role="cell" colSpan={6}><Detail row={r} hot={keys} /></td></tr>
+                        <tr role={role("row")} className="ro-xrow" id={`ro-x-${r.id}`}><td role={role("cell")} colSpan={6}><Detail row={r} hot={keys} /></td></tr>
                       )}
                     </React.Fragment>
                   );

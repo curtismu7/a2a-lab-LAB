@@ -21,7 +21,7 @@ export const mockRecord = {
   ],
   coverage: { person: 'simulated', agent: 'simulated', authorize: 'not-logged', privilege: 'simulated', gateway: 'simulated', resource: 'simulated' },
   reasons: { authorize: 'The lab mock produced no event for this layer.' },
-  summary: { allowed: 2, refused: 1, blocked: 1, info: 1 },
+  summary: { allowed: 2, refused: 1, blocked: 1, info: 1, unverified: 0 },
 };
 
 // Real mode: logged rows with their own timestamps, a layer the product did not log, and one that could not be read.
@@ -37,7 +37,7 @@ export const realRecord = {
   ],
   coverage: { person: 'logged', agent: 'not-logged', authorize: 'response', privilege: 'logged', gateway: 'logged', resource: 'logged' },
   reasons: { agent: 'No matching line was found for this run in the window. The product may not log this event.' },
-  summary: { allowed: 1, refused: 2, blocked: 1, info: 1 },
+  summary: { allowed: 1, refused: 1, blocked: 1, info: 2, unverified: 1 },
 };
 
 // Long names and an unreachable layer: the layout must wrap, never cut or scroll.
@@ -50,7 +50,7 @@ export const longRecord = {
   ],
   coverage: { person: 'logged', agent: 'unreachable', authorize: 'response', privilege: 'logged', gateway: 'logged', resource: 'unreachable' },
   reasons: { agent: 'elasticsearch: no source configured for pingfederate | docker: Docker socket not reachable (ENOENT).', resource: 'elasticsearch: Elasticsearch refused the read credential (HTTP 401). | docker: Docker has no container named mcp-server.' },
-  summary: { allowed: 1, refused: 2, blocked: 1, info: 0 },
+  summary: { allowed: 1, refused: 2, blocked: 1, info: 0, unverified: 0 },
 };
 
 // A search cut at its cap: the agent layer found nothing in what was read, which is NOT proof that nothing was logged.
@@ -65,7 +65,7 @@ export const emptyRecord = {
   runId: 'run-empty', window: WINDOW, source: 'real', excerpt: true, truncated: false, rows: [],
   coverage: { person: 'unreachable', agent: 'unreachable', authorize: 'unreachable', privilege: 'unreachable', gateway: 'unreachable', resource: 'unreachable' },
   reasons: Object.fromEntries(['person', 'agent', 'authorize', 'privilege', 'gateway', 'resource'].map((k) => [k, 'no log reader is configured: set RUN_OBS_ES_URL and RUN_OBS_ES_READ_APIKEY (a read-only Elasticsearch key; see the README), or RUN_OBS_DOCKER=1 with RUN_OBS_CONTAINERS for an ad-hoc run'])),
-  summary: { allowed: 0, refused: 0, blocked: 0, info: 0 },
+  summary: { allowed: 0, refused: 0, blocked: 0, info: 0, unverified: 0 },
 };
 
 // What a lab's API answers when the collection itself failed (Rule 23: structured JSON, never an HTML page).
