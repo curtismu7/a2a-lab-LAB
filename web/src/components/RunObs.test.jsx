@@ -18,6 +18,27 @@ describe("RunObs", () => {
     expect(getRunObservability).not.toHaveBeenCalled();
   });
 
+  it("while the answer is pending it says so (no empty-state flash), and a no-record message is shown, not dropped", async () => {
+    let release;
+    getRunObservability.mockReturnValue(new Promise((r) => { release = r; }));
+    render(<RunObs run={RUN} tick="0" mode="mock" />);
+    expect(screen.getByTestId("ro-loading")).toBeTruthy();
+    expect(screen.queryByTestId("ro-empty")).toBeNull();
+    release({ record: null, message: "No run yet in this workspace: run the demo." });
+    await waitFor(() => expect(screen.getByTestId("ro-none").textContent).toMatch(/No run yet in this workspace/));
+    expect(screen.queryByTestId("ro-empty")).toBeNull();
+  });
+
+  it("keeps the previous record on screen while a refresh is pending", async () => {
+    getRunObservability.mockResolvedValue({ record: mockRecord });
+    const { rerender } = render(<RunObs run={RUN} tick="0" mode="mock" />);
+    await waitFor(() => expect(screen.getByTestId("ro-table")).toBeTruthy());
+    getRunObservability.mockReturnValue(new Promise(() => {}));
+    rerender(<RunObs run={{ ...RUN }} tick="1" mode="mock" />);
+    expect(screen.getByTestId("ro-table")).toBeTruthy();
+    expect(screen.queryByTestId("ro-loading")).toBeNull();
+  });
+
   it("after a run: the mock record, every row simulated, the Mock wording, and where this lab's logs live", async () => {
     getRunObservability.mockResolvedValue({ record: mockRecord });
     render(<RunObs run={RUN} tick="0" mode="mock" />);

@@ -3,7 +3,6 @@
 export const WORKSPACE_RE = /^[a-z0-9-]{1,40}$/;
 export const DEFAULT_WORKSPACE = 'default';
 export const MAX_RUNS = 20;
-export const MAX_EVENTS = 100;
 
 export function workspaceFrom(req) {
   const raw = req.headers['x-workspace'];
@@ -37,12 +36,6 @@ export function createWorkspaces({ max = 500, ttlMs = 60 * 60 * 1000, now = Date
       v.runs = [...v.runs, { ...run, at: now() }].slice(-MAX_RUNS);
       sweep();
       return v.runs;
-    },
-    // Rule 27: the decisions this workspace's mock made, for the run-observability panel (bounded).
-    event(id, e) {
-      const v = this.state(id);
-      v.events = [...v.events, e].slice(-MAX_EVENTS);
-      return v.events;
     },
     resetWorkspace(id) { map.delete(id); },
     size() { return map.size; },

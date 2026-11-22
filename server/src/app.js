@@ -15,7 +15,7 @@ import { buildStory } from './story.js';
 import { DIAGRAM_NAMES, buildDiagram } from './diagramData.js';
 import { A2A_AUDIENCE, A2AInputError, LIMITS, agentCard, actChainDepth, createRegistry, evaluateA2a, exchangeOne, exchangeTwo } from './a2a.js';
 import { buildHops, newTrace } from './trace.js';
-import { buildRunRecord, decisionLine } from './runObs.js';
+import { addEvent, buildRunRecord, decisionLine, runIdFor, tokenKey } from './runObs.js';
 import { mountShelfRoute } from './shelfLink.js';
 import { createWorkspaces, workspaceFrom } from './workspaces.js';
 
@@ -61,9 +61,7 @@ export function createApp({
 
   // Rule 27: every decision the mock makes leaves one stdout line (actor, outcome, no token) and one event for the run-observability panel.
   const observe = (ws, e) => {
-    const event = { at: new Date().toISOString(), ...e };
-    workspaces.event(ws, event);
-    log(decisionLine(event));
+    log(decisionLine(addEvent(workspaces.state(ws).events, { at: new Date().toISOString(), ...e })));
   };
 
   const withWorkspace = (handler) => (req, res) => {
@@ -96,7 +94,7 @@ export function createApp({
     const all = reg.set(body.specialist.trim().slice(0, LIMITS.name), body.registered);
     v.registry = reg;
     workspaces.record(ws, { tool: 'registry-set', decision: 'FLIPPED', reason: `${body.specialist.trim()} -> ${body.registered ? 'registered' : 'revoked'}`, token: null });
-    observe(ws, { kind: 'registry', layer: 'gateway', outcome: 'info', actor: body.specialist.trim(), code: body.registered ? 'registered' : 'revoked', message: `Agent Card registry: "${body.specialist.trim().slice(0, LIMITS.name)}" was ${body.registered ? 'registered' : 'revoked'}`, detail: { registered: all } });
+    observe(ws, { kind: 'registry', layer: 'gateway', outcome: 'info', actor: body.specialist.trim(), code: body.registered ? 'registered' : 'revoked', message: `Agent Card registry: "${body.specialist.trim().slice(0, LIMITS.name)}" was ${body.registered ? 'registered' : 'revoked'}` });
     return res.json({ specialist: body.specialist.trim(), registered: body.registered, specialists: all, workspace: ws });
   }));
 
@@ -110,7 +108,7 @@ export function createApp({
     try {
       const token = exchangeOne({ userSub: user, generalistClientId: generalist, scope, now: () => Date.now() });
       workspaces.record(ws, { tool: 'exchange-1', decision: 'MINTED', reason: `act={${token.act.sub}} for ${token.sub}`, token: null });
-      observe(ws, { kind: 'exchange-1', layer: 'agent', outcome: 'allowed', actor: token.act.sub, sub: token.sub, code: null, message: `RFC 8693 exchange #1 minted a token for ${token.sub} with act={${token.act.sub}}`, detail: { sub: token.sub, act: token.act, aud: token.aud, scope: token.scope } });
+      observe(ws, { kind: 'exchange-1', layer: 'agent', outcome: 'allowed', actor: token.act.sub, sub: token.sub, code: null, tokenKey: tokenKey(token), message: `RFC 8693 exchange #1 minted a token for ${token.sub} with act={${token.act.sub}}`, detail: { sub: token.sub, act: token.act, aud: token.aud, scope: token.scope } });
       return res.json({ token, workspace: ws });
     } catch (e) {
       if (e instanceof A2AInputError) {
@@ -132,11 +130,11 @@ export function createApp({
     try {
       const token = exchangeTwo({ generalistToken: body.generalistToken, specialistClientId: specialist, scope, now: () => Date.now() });
       workspaces.record(ws, { tool: 'exchange-2', decision: 'MINTED', reason: `nested act {${token.act.sub} -> ${token.act.act.sub}} for ${token.sub}, scope [ ${token.scope} ]`, token: null });
-      observe(ws, { kind: 'exchange-2', layer: 'agent', outcome: 'allowed', actor: token.act.sub, sub: token.sub, code: null, message: `RFC 8693 exchange #2 minted the nested chain act={${token.act.sub} -> ${token.act.act.sub}} for ${token.sub}; scope narrowed to [ ${token.scope} ]`, detail: { sub: token.sub, act: token.act, aud: token.aud, scope: token.scope } });
+      observe(ws, { kind: 'exchange-2', layer: 'agent', outcome: 'allowed', actor: token.act.sub, sub: token.sub, code: null, tokenKey: tokenKey(token), parentKey: tokenKey(body.generalistToken), message: `RFC 8693 exchange #2 minted the nested chain act={${token.act.sub} -> ${token.act.act.sub}} for ${token.sub}; scope narrowed to [ ${token.scope} ]`, detail: { sub: token.sub, act: token.act, aud: token.aud, scope: token.scope } });
       return res.json({ token, workspace: ws });
     } catch (e) {
       if (e instanceof A2AInputError) {
-        observe(ws, { kind: 'exchange-2', layer: 'agent', outcome: 'refused', actor: specialist, code: e.code, message: `RFC 8693 exchange #2 refused: ${e.code}` });
+        observe(ws, { kind: 'exchange-2', layer: 'agent', outcome: 'refused', actor: specialist, sub: body.generalistToken?.sub, parentKey: tokenKey(body.generalistToken), code: e.code, message: `RFC 8693 exchange #2 refused: ${e.code}` });
         return res.status(400).json({ error: e.code, detail: e.message });
       }
       throw e;
@@ -165,14 +163,14 @@ export function createApp({
     const trace = newTrace(req.headers.traceparent);
     const permit = verdict.decision === 'PERMIT';
     const specialist = String(body.token.act?.sub ?? '').slice(0, LIMITS.clientId);
-    const who = { actor: specialist, sub: body.token.sub, traceId: trace.traceId };
+    const who = { actor: specialist, sub: body.token.sub, traceId: trace.traceId, tokenKey: tokenKey(body.token) };
+    who.runId = runIdFor(workspaces.state(ws).events, { kind: 'tool', ...who }); // the run this call belongs to, for every event it leaves
     // The registry is consulted only when the chain checks before it passed (see evaluateA2a).
     if (!['invalid_token', 'missing_sub', 'token_expired', 'chain_not_nested'].includes(verdict.code)) {
       const found = verdict.code !== 'unregistered_specialist';
-      observe(ws, { kind: 'registry', layer: 'gateway', outcome: 'info', ...who, code: found ? 'registered' : 'not_registered', message: `Agent Card registry lookup: "${specialist}" is ${found ? 'registered' : 'not registered'}`, detail: { registered: reg.all() } });
+      observe(ws, { kind: 'registry', layer: 'gateway', outcome: 'info', ...who, code: found ? 'registered' : 'not_registered', message: `Agent Card registry lookup: "${specialist}" is ${found ? 'registered' : 'not registered'}` });
     }
     observe(ws, { kind: 'tool', layer: 'gateway', outcome: permit ? 'allowed' : 'refused', ...who, code: verdict.code, message: `${verdict.decision}${verdict.code ? ` ${verdict.code}` : ''}: ${verdict.reason}`, detail: { decision: verdict.decision, code: verdict.code, tool, chainDepth: actChainDepth(body.token.act), traceId: trace.traceId } });
-    if (permit) observe(ws, { kind: 'tool', layer: 'resource', outcome: 'allowed', ...who, code: null, message: `Tool ${tool} dispatched for ${body.token.sub} (mock tool server)`, detail: { tool } });
     const hops = buildHops({ trace, cast: castFor(req), stage: verdict.decision === 'PERMIT' ? 'policy-permit' : 'policy-deny', code: verdict.code, reason: verdict.reason, tool, token: body.token, registry: reg.all() });
     res.set('traceparent', hops[0].traceparent);
     return res.status(verdict.decision === 'PERMIT' ? 200 : 403).json({
@@ -188,9 +186,10 @@ export function createApp({
   api.get('/run-observability', withWorkspace(async (ws, _req, res) => {
     try {
       if (modeFrom() === 'real') return res.status(409).json({ error: 'real_not_offered', message: 'Real mode is reserved in this lab: it has no live data path, so there is no real run to read logs for. Switch to Mock to see the simulated record.' });
-      const record = await buildRunRecord({ source: 'mock', events: workspaces.state(ws).events });
+      const record = await buildRunRecord({ events: workspaces.state(ws).events });
       return res.json(record ? { record } : { record: null, message: 'No run yet in this workspace: run the demo.' });
-    } catch {
+    } catch (e) {
+      console.error(`[a2a-lab] run-observability failed: ${String(e?.code || e?.name || 'Error').slice(0, 40)}: ${String(e?.message).replace(/[\r\n]+/g, ' ').slice(0, 200)}`);
       return res.status(500).json({ error: 'internal_error', message: 'The run observability record could not be built.' });
     }
   }));

@@ -31,25 +31,32 @@ export const RUN_OBS_STREAMS = [
 ];
 
 /** What each layer logged for the run above. Mock: simulated rows from the decisions the mock computed. Real is reserved: no record. */
+const TITLE = "What each layer logged for this run";
+const Note = ({ testId, children }) => (
+  <div className="panel">
+    <section className="ro" data-testid={testId} aria-label={TITLE}>
+      <h2>{TITLE}</h2>
+      <p className="ro-muted">{children}</p>
+    </section>
+  </div>
+);
+
 export function RunObs({ run, tick, mode }) {
-  const [record, setRecord] = useState(null);
+  // state: null = nothing asked yet, { pending } = a fetch is in flight (the previous record stays on screen), { record, message } = answered.
+  const [state, setState] = useState(null);
   useEffect(() => {
     let live = true;
-    if (!run || mode === "real") { setRecord(null); return undefined; }
-    getRunObservability().then((b) => { if (live) setRecord(b && "record" in b ? b.record : b); }, () => { if (live) setRecord({ error: "unreachable", message: "Could not reach the server." }); });
+    if (!run || mode === "real") { setState(null); return undefined; }
+    setState((s) => ({ ...(s || {}), pending: true }));
+    getRunObservability().then((b) => { if (live) setState(b && "record" in b ? { record: b.record, message: b.message } : { record: b }); }, () => { if (live) setState({ record: { error: "unreachable", message: "Could not reach the server." } }); });
     return () => { live = false; };
   }, [run, tick, mode]);
   if (mode === "real") {
-    return (
-      <div className="panel">
-        <section className="ro" data-testid="ro-real-not-offered" aria-label="What each layer logged for this run">
-          <h2>What each layer logged for this run</h2>
-          <p className="ro-muted">Not offered in Real mode. This lab's Real mode is reserved: it has no live data path, so there is no real run whose logs could be read, and nothing is shown rather than something made up. Switch to Mock to see the simulated record.</p>
-        </section>
-      </div>
-    );
+    return <Note testId="ro-real-not-offered">Not offered in Real mode. This lab's Real mode is reserved: it has no live data path, so there is no real run whose logs could be read, and nothing is shown rather than something made up. Switch to Mock to see the simulated record. The panel will read Elasticsearch when Real exists.</Note>;
   }
-  return <div className="panel"><RunObservability record={record} source="mock" streams={RUN_OBS_STREAMS} /></div>;
+  if (run && (!state || (state.pending && !state.record))) return <Note testId="ro-loading">Collecting this run's logs...</Note>;
+  if (run && state && !state.record && state.message) return <Note testId="ro-none">{state.message}</Note>;
+  return <div className="panel"><RunObservability record={run && state ? state.record : null} source="mock" streams={RUN_OBS_STREAMS} /></div>;
 }
 
 const WORDS = {

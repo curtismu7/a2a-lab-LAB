@@ -27,13 +27,9 @@ test('every vendored run-observability file matches its pin', () => {
   }
 });
 
-test('compose never mounts the Docker socket and only passes the Elasticsearch read settings, empty by default', () => {
+test('compose never mounts the Docker socket and passes no run-observability settings (nothing reads them: Real is reserved)', () => {
   const compose = fs.readFileSync(path.join(root, 'docker-compose.yml'), 'utf8');
   assert.ok(!/docker\.sock/.test(compose), 'no Docker socket mount');
-  assert.ok(!/RUN_OBS_DOCKER/.test(compose), 'the opt-in Docker reader is not switched on');
-  assert.match(compose, /RUN_OBS_ES_URL: \$\{RUN_OBS_ES_URL:-\}/);
-  assert.match(compose, /RUN_OBS_ES_READ_APIKEY: \$\{RUN_OBS_ES_READ_APIKEY:-\}/);
-  const env = fs.readFileSync(path.join(root, '.env.example'), 'utf8');
-  assert.match(env, /^RUN_OBS_ES_URL=$/m);
-  assert.match(env, /^RUN_OBS_ES_READ_APIKEY=$/m);
+  assert.ok(!/RUN_OBS_/.test(compose), 'no reader settings in the container');
+  assert.ok(!/RUN_OBS_/.test(fs.readFileSync(path.join(root, '.env.example'), 'utf8')));
 });

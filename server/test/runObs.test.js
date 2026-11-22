@@ -1,13 +1,11 @@
 // Rule 27: the run-observability record this lab builds, and the decision lines its server writes.
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
-import http from 'node:http';
 import { createApp, startHttpServer } from '../src/app.js';
 import { createHealth } from '../src/health.js';
-import { ElasticsearchReader, assertRunObservability, readersFromEnv } from '../src/runObservability.js';
-import { buildRunRecord, currentRun, decisionLine } from '../src/runObs.js';
+import { assertRunObservability } from '../src/runObservability.js';
+import { addEvent, currentRun, decisionLine } from '../src/runObs.js';
 
-const ESKEY = ['read', 'only', 'test', 'value'].join('-');
 const REAL_ENV = { A2ALAB_REAL_URL: 'https://gw.example', A2ALAB_REAL_CLIENT_ID: 'cid', A2ALAB_REAL_CLIENT_SECRET: 'x' };
 
 async function withLab(fn, { env = {} } = {}) {
@@ -45,16 +43,17 @@ test('mock: a permitted run gives a record every row of which the mock computed 
     assert.deepEqual(assertRunObservability(r), []);
     assert.equal(r.source, 'mock');
     assert.ok(r.rows.filter((x) => x.origin !== 'not-logged').every((x) => x.origin === 'simulated'));
-    assert.deepEqual(r.coverage, { person: 'not-logged', agent: 'simulated', authorize: 'not-logged', privilege: 'not-logged', gateway: 'simulated', resource: 'simulated' });
+    assert.deepEqual(r.coverage, { person: 'not-logged', agent: 'simulated', authorize: 'not-logged', privilege: 'not-logged', gateway: 'simulated', resource: 'not-logged' });
+    assert.match(r.reasons.resource, /no tool server/);
+    assert.ok(!r.rows.some((x) => x.layer === 'resource' && x.origin === 'simulated'), 'no resource event was computed, so none is shown');
     const msgs = r.rows.filter((x) => x.origin === 'simulated').map((x) => `${x.layer}|${x.outcome}|${x.message}`);
-    assert.equal(msgs.length, 5, msgs.join('\n'));
+    assert.equal(msgs.length, 4, msgs.join('\n'));
     assert.match(msgs[0], /^agent\|allowed\|RFC 8693 exchange #1 .*act=\{generalist-agent\}/);
     assert.match(msgs[1], /^agent\|allowed\|RFC 8693 exchange #2 .*portfolio-specialist -> generalist-agent/);
     assert.match(msgs[2], /^gateway\|info\|Agent Card registry lookup: "portfolio-specialist" is registered/);
     assert.match(msgs[3], /^gateway\|allowed\|PERMIT/);
-    assert.match(msgs[4], /^resource\|allowed\|Tool get_portfolio_summary dispatched/);
-    assert.deepEqual(r.summary, { allowed: 4, refused: 0, blocked: 0, info: 1 });
-    for (const l of ['person', 'authorize', 'privilege']) assert.ok(r.reasons[l], `${l} says why it is not logged`);
+    assert.deepEqual(r.summary, { allowed: 3, refused: 0, blocked: 0, info: 1 });
+    for (const l of ['person', 'authorize', 'privilege', 'resource']) assert.ok(r.reasons[l], `${l} says why it is not logged`);
     const times = r.rows.filter((x) => x.at).map((x) => Date.parse(x.at));
     assert.deepEqual(times, [...times].sort((a, b) => a - b));
   });
@@ -67,7 +66,7 @@ test('mock: an unregistered specialist is a refusal the record shows, and the re
     const r = await rec(call);
     assert.deepEqual(assertRunObservability(r), []);
     assert.equal(r.coverage.resource, 'not-logged');
-    assert.match(r.reasons.resource, /refused first/);
+    assert.match(r.reasons.resource, /no tool server/);
     const gw = r.rows.filter((x) => x.layer === 'gateway');
     assert.deepEqual(gw.map((x) => x.outcome), ['info', 'refused']);
     assert.match(gw[0].message, /"rogue-specialist" is not registered/);
@@ -85,7 +84,7 @@ test('mock: the no-bearer 401 probe before the handoff is part of the run and is
     assert.equal(r.coverage.agent, 'not-logged');
     await run();
     r = await rec(call);
-    assert.equal(r.rows.filter((x) => x.origin === 'simulated').length, 6, 'the 401 and the handoff are one run');
+    assert.equal(r.rows.filter((x) => x.origin === 'simulated').length, 5, 'the 401 and the handoff are one run');
     assert.equal(r.rows.find((x) => x.origin === 'simulated').outcome, 'refused');
   });
 });
@@ -127,7 +126,6 @@ test('the lab server writes one timestamped stdout line per decision: actor and 
       'actor=portfolio-specialist outcome=allowed code=-',
       'actor=portfolio-specialist outcome=info code=registered',
       'actor=portfolio-specialist outcome=allowed code=-',
-      'actor=portfolio-specialist outcome=allowed code=-',
       'actor=wire-specialist outcome=info code=revoked',
     ]);
     assert.match(lines[0], / trace=[0-9a-f]{32}$/);
@@ -159,14 +157,6 @@ test('rule 19 still switches both ways; the record follows the mode: mock offers
   });
 });
 
-test('currentRun: nothing before a run, the latest exchange #1 onward after one', () => {
-  const ev = (kind, code) => ({ kind, code: code ?? null, at: '2026-11-22T10:00:00.000Z' });
-  assert.deepEqual(currentRun([]), []);
-  assert.deepEqual(currentRun([ev('registry', 'revoked')]), []);
-  const all = [ev('exchange-1'), ev('tool'), ev('registry', 'revoked'), ev('exchange-1'), ev('exchange-2')];
-  assert.equal(currentRun(all).length, 2);
-});
-
 test('decisionLine strips anything that could forge a second line and caps long names', () => {
   const l = decisionLine({ at: '2026-11-22T10:00:00.000Z', actor: `a b\n${'z'.repeat(200)}`, outcome: 'allowed', code: null, kind: 'tool', traceId: undefined });
   assert.ok(!/\n/.test(l));
@@ -174,51 +164,100 @@ test('decisionLine strips anything that could forge a second line and caps long 
   assert.match(l, / code=- stage=tool trace=-$/);
 });
 
-// ---- Real record against an in-process fake Elasticsearch (Real mode is reserved: the route never offers it, but the builder is ready) ----
-async function fakeEs(handler) {
-  const seen = [];
-  const server = http.createServer((req, res) => {
-    let raw = '';
-    req.on('data', (c) => { raw += c; });
-    req.on('end', () => { seen.push({ method: req.method, url: req.url, auth: req.headers.authorization }); const [status, body] = handler(); res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(body)); });
-  });
-  await new Promise((r) => server.listen(0, '127.0.0.1', r));
-  return { url: `http://127.0.0.1:${server.address().port}`, seen, close: () => new Promise((r) => server.close(r)) };
-}
-const EVENTS = [
-  { at: '2026-11-22T10:00:01.000Z', kind: 'exchange-1', layer: 'agent', outcome: 'allowed', actor: 'generalist-agent', sub: 'demoUser', message: 'x' },
-  { at: '2026-11-22T10:00:03.000Z', kind: 'tool', layer: 'gateway', outcome: 'allowed', actor: 'portfolio-specialist', sub: 'demoUser', traceId: 'a'.repeat(32), message: 'PERMIT' },
-];
+// ---- one run per record ----
+const msgsOf = (r) => r.rows.filter((x) => x.origin === 'simulated').map((x) => x.message);
+const ex1 = (call, user, ws = 'obs-a') => call('POST', '/api/exchange/one', { user, generalist: 'generalist-agent', scope: 'a2a:get_portfolio_summary' }, ws);
+const ex2 = (call, t1, ws = 'obs-a') => call('POST', '/api/exchange/two', { generalistToken: t1, specialist: 'portfolio-specialist', scope: 'a2a:get_portfolio_summary' }, ws);
+const tool = (call, t2, ws = 'obs-a') => call('POST', '/api/tool', { token: t2, tool: 'get_portfolio_summary' }, ws);
 
-test('real record via the Elasticsearch reader: logged rows with their own timestamps, never simulated, assertRunObservability passes', async () => {
-  const es = await fakeEs(() => [200, { hits: { hits: [
-    { _source: { '@timestamp': '2026-11-22T10:00:02.500Z', ping_product: 'pinggateway', message: '[P1AZ] DECISION: PERMIT | backend=real | sub=demoUser | tool=get_portfolio_summary | method=tools/call' } },
-  ] } }]);
-  try {
-    const r = await buildRunRecord({ source: 'real', events: EVENTS, readers: [new ElasticsearchReader({ url: es.url, apiKey: ESKEY })] });
+test('overlapping runs on one workspace: exchange #1 (A), #1 (B), #2 (A), call (A) never put A rows in B record', async () => {
+  await withLab(async ({ call }) => {
+    const a1 = await ex1(call, 'user-aaaa');
+    const b1 = await ex1(call, 'user-bbbb');
+    const a2 = await ex2(call, a1.body.token);
+    assert.equal((await tool(call, a2.body.token)).status, 200);
+    let r = await rec(call);
     assert.deepEqual(assertRunObservability(r), []);
-    assert.equal(r.source, 'real');
-    assert.ok(r.rows.every((x) => x.origin !== 'simulated'));
-    const az = r.rows.find((x) => x.layer === 'authorize');
-    assert.equal(az.origin, 'logged');
-    assert.equal(az.matchedBy, 'id');
-    assert.equal(az.atExact, '2026-11-22T10:00:02.500Z');
-    assert.equal(r.coverage.person, 'not-logged');
-    assert.ok(es.seen.length > 0 && es.seen.every((s) => s.method === 'POST' && /\/_search$/.test(s.url) && s.auth === `ApiKey ${ESKEY}`), 'read-only searches only');
-    assert.ok(!JSON.stringify(r).includes(ESKEY), 'the read key never reaches the record');
-  } finally { await es.close(); }
+    assert.deepEqual(msgsOf(r).map((m) => /user-bbbb/.test(m)), [true], 'B alone: only its exchange #1');
+    assert.ok(!JSON.stringify(r).includes('user-aaaa'), 'nothing of A');
+    const b2 = await ex2(call, b1.body.token);
+    await tool(call, b2.body.token);
+    r = await rec(call);
+    assert.equal(msgsOf(r).length, 4);
+    assert.ok(msgsOf(r).every((m) => !/user-aaaa/.test(m)) && msgsOf(r).slice(0, 2).every((m) => /user-bbbb/.test(m)));
+  });
 });
 
-test('real record without a reader or with a failing one: unreachable with a reason, never blank, never simulated', async () => {
-  const none = await buildRunRecord({ source: 'real', events: EVENTS, readers: readersFromEnv({}) });
-  assert.deepEqual(assertRunObservability(none), []);
-  assert.ok(Object.values(none.coverage).every((c) => c === 'unreachable'));
-  assert.match(none.reasons.person, /RUN_OBS_ES_URL/);
-  const es = await fakeEs(() => [401, { error: 'no' }]);
+test('a call whose token is unknown joins the latest run of the same subject, else none', async () => {
+  await withLab(async ({ call }) => {
+    await ex1(call, 'user-cccc');
+    const forged = { sub: 'user-cccc', act: { sub: 'portfolio-specialist', act: { sub: 'generalist-agent' } }, aud: 'a2a-gateway', scope: 'a2a:get_portfolio_summary', iat: 1, exp: 4102444800 };
+    await tool(call, forged);
+    assert.equal(msgsOf(await rec(call)).length, 3, 'exchange #1, then the lookup and the verdict, joined by subject');
+    await tool(call, { ...forged, sub: 'stranger' });
+    assert.ok(!JSON.stringify(await rec(call)).includes('stranger'), 'no run for that subject: logged, not in the record');
+  });
+});
+
+test('a run ends at its verdict: a registry flip after it is not part of the record and does not stretch the window', async () => {
+  await withLab(async ({ call, run }) => {
+    await run();
+    const before = await rec(call);
+    await new Promise((r) => setTimeout(r, 15));
+    await call('POST', '/api/registry/set', { specialist: 'wire-specialist', registered: false });
+    const after = await rec(call);
+    assert.deepEqual(after.rows, before.rows);
+    assert.equal(after.window.to, before.window.to);
+  });
+  await withLab(async ({ call }) => { // a flip BETWEEN exchange #1 and the verdict is part of the run
+    const a1 = await ex1(call, 'user-dddd');
+    await call('POST', '/api/registry/set', { specialist: 'portfolio-specialist', registered: false });
+    const a2 = await ex2(call, a1.body.token);
+    assert.equal((await tool(call, a2.body.token)).status, 403);
+    const r = await rec(call);
+    assert.ok(msgsOf(r).some((m) => /was revoked/.test(m)), 'the flip that caused the refusal is in the run');
+    assert.equal(r.summary.refused, 1);
+  });
+});
+
+test('the current run survives the cap: one run then 150 registry flips still returns that run', async () => {
+  await withLab(async ({ call, run }) => {
+    await run();
+    const before = await rec(call);
+    for (let i = 0; i < 150; i += 1) await call('POST', '/api/registry/set', { specialist: `flip-${i % 7}`, registered: i % 2 === 0 });
+    const after = await rec(call);
+    assert.deepEqual(after.rows, before.rows);
+  });
+  const events = []; // the same on the list itself, with a small cap
+  addEvent(events, { at: '2026-11-22T10:00:00.000Z', kind: 'exchange-1', sub: 'u-1234', tokenKey: 'k1' }, 5);
+  for (let i = 0; i < 20; i += 1) addEvent(events, { at: '2026-11-22T10:00:01.000Z', kind: 'registry', code: 'revoked' }, 5);
+  assert.equal(events.length, 5);
+  assert.equal(events[0].kind, 'exchange-1', 'the run start is never evicted');
+  assert.equal(currentRun(events).length, 5, 'the run start plus the newest flips made while it had no verdict yet');
+});
+
+test('currentRun: nothing before a run; a lone 401 probe is a run; the probe before exchange #1 joins that run', () => {
+  const t = '2026-11-22T10:00:00.000Z';
+  const events = [];
+  assert.deepEqual(currentRun(events), []);
+  addEvent(events, { at: t, kind: 'registry', code: 'revoked' });
+  assert.deepEqual(currentRun(events), [], 'a flip alone is no run');
+  addEvent(events, { at: t, kind: 'tool', code: 'missing_bearer' });
+  assert.equal(currentRun(events).length, 1);
+  addEvent(events, { at: t, kind: 'exchange-1', sub: 'u-1234', tokenKey: 'k1' });
+  assert.equal(currentRun(events).length, 2);
+});
+
+test('a failure building the record is logged (code and message only) and answered as JSON { error, message }', async () => {
+  const err = mock.method(console, 'error', () => {});
   try {
-    const bad = await buildRunRecord({ source: 'real', events: EVENTS, readers: [new ElasticsearchReader({ url: es.url, apiKey: ESKEY })] });
-    assert.deepEqual(assertRunObservability(bad), []);
-    assert.equal(bad.coverage.gateway, 'unreachable');
-    assert.match(bad.reasons.gateway, /refused the read credential/);
-  } finally { await es.close(); }
+    await withLab(async ({ call }) => {
+      const r = await call('GET', '/api/run-observability');
+      assert.equal(r.status, 500);
+      assert.equal(r.body.error, 'internal_error');
+      assert.ok(r.body.message);
+      assert.equal(err.mock.callCount(), 1);
+      assert.match(err.mock.calls[0].arguments[0], /run-observability failed: Error: MODE=bogus/);
+    }, { env: { MODE: 'bogus' } });
+  } finally { err.mock.restore(); }
 });
