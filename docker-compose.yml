@@ -13,6 +13,9 @@ services:
       A2ALAB_BIND: 0.0.0.0
       SHELF_URL: ${SHELF_URL:-https://local.ping-devops.com:8443/demo-shelf}
       LAB_ALLOWED_HOSTS: ${LAB_ALLOWED_HOSTS:-a2a-lab.local.ping-devops.com}
+      # Rule 27 run observability: a LOOPBACK Elasticsearch URL and a read-only key. Empty by default. Real mode is reserved in this lab, so nothing reads them yet. Never mount the Docker socket.
+      RUN_OBS_ES_URL: ${RUN_OBS_ES_URL:-}
+      RUN_OBS_ES_READ_APIKEY: ${RUN_OBS_ES_READ_APIKEY:-}
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]

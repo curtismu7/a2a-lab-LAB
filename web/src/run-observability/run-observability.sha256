@@ -1,0 +1,6 @@
+# sha256 of the files labs copy unchanged into web/src/run-observability/ (RunObservability.jsx, run-observability.css, run-observability.test.jsx, fixtures.js) and server/src/ (runObservability.js). Re-pin: shasum -a 256 RunObservability.jsx run-observability.css run-observability.test.jsx runObservability.js fixtures.js
+30dbd3e4a42f7d2645cb43aebf74470cbc3f7a4e8cec060d8878895157a429b4  RunObservability.jsx
+8d4f66b85181407f4a60b2ce2c828e0aae875d395abafeda9f793ded2a149808  run-observability.css
+b31c3e4240112929f79def31059d7294ad6edc16862ed418faef0792a5535c72  run-observability.test.jsx
+6128e1cf7cc1481f5addf47e53737908be69fb1c344f6be78d6383401d2ad68d  runObservability.js
+ac99fb874d20c2d66e747fb38c381089bf6a648669c14331f39ac69d9d5a6ea1  fixtures.js
