@@ -53,6 +53,13 @@ export const longRecord = {
   summary: { allowed: 1, refused: 2, blocked: 1, info: 0 },
 };
 
+// A search cut at its cap: the agent layer found nothing in what was read, which is NOT proof that nothing was logged.
+export const partialRecord = {
+  ...realRecord, runId: 'run-partial-1', truncated: true,
+  reasons: { agent: 'No matching line was found in what was read. pingfederate: the search was cut at the cap, so absence is not proof' },
+  partial: { agent: true },
+};
+
 // A run that read fine and found nothing.
 export const emptyRecord = {
   runId: 'run-empty', window: WINDOW, source: 'real', excerpt: true, truncated: false, rows: [],

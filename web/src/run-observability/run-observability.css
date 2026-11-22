@@ -18,6 +18,7 @@
 .ro-chip[data-coverage="response"], .ro-chip[data-origin="response"] { color: var(--status-warn); border-color: var(--status-warn); border-width: 2px; padding: 0 9px; }
 .ro-chip[data-coverage="simulated"], .ro-chip[data-origin="simulated"] { color: var(--status-info); border-color: var(--status-info); border-style: dashed; }
 .ro-chip[data-coverage="not-logged"], .ro-chip[data-origin="not-logged"] { color: var(--muted); border-style: dotted; }
+.ro-chip[data-partial="true"] { color: var(--status-warn); border-color: var(--status-warn); border-style: dotted; }
 .ro-chip[data-coverage="unreachable"] { color: var(--danger-text); border-color: var(--danger-text); border-style: double; border-width: 3px; padding: 0 8px; }
 .ro-tag { display: inline-block; margin: 0 0 0 6px; padding: 0 8px; border: 1px dashed var(--muted); border-radius: 999px; font-size: 0.8125rem; color: var(--muted); white-space: nowrap; }
 

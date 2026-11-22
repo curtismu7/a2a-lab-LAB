@@ -1,6 +1,7 @@
-# sha256 of the files labs copy unchanged into web/src/run-observability/ (RunObservability.jsx, run-observability.css, run-observability.test.jsx, fixtures.js) and server/src/ (runObservability.js). Re-pin: shasum -a 256 RunObservability.jsx run-observability.css run-observability.test.jsx runObservability.js fixtures.js
-30dbd3e4a42f7d2645cb43aebf74470cbc3f7a4e8cec060d8878895157a429b4  RunObservability.jsx
-8d4f66b85181407f4a60b2ce2c828e0aae875d395abafeda9f793ded2a149808  run-observability.css
-b31c3e4240112929f79def31059d7294ad6edc16862ed418faef0792a5535c72  run-observability.test.jsx
-6128e1cf7cc1481f5addf47e53737908be69fb1c344f6be78d6383401d2ad68d  runObservability.js
-ac99fb874d20c2d66e747fb38c381089bf6a648669c14331f39ac69d9d5a6ea1  fixtures.js
+# sha256 of the files a lab copies unchanged, with the path relative to the lab root. Verify with checkPin.mjs (vendored as scripts/run-observability-checkPin.mjs). Core server/src/runObservability.js is required; server/src/runObservabilityReaders.js only for labs that read logs. Re-pin: shasum -a 256 each file and write its lab-relative path.
+151dfd02f8d80dbcc834941258b74cfc0999596d0dd73712167eeb0af674b955  web/src/run-observability/RunObservability.jsx
+5cb9dfc50596e07db9e7d80b7ae39f14a1fbec0b3af4e8f0560e4915daaa7b3e  web/src/run-observability/run-observability.css
+e5add02199129030a03161a4d1c6f0a2f98d542672a4d798a49809a88a6c3af0  web/src/run-observability/run-observability.test.jsx
+9fc98c8a790c5eb51f5c5be32fe880e7856becbf56a590ca5a763e56ae6b9b29  web/src/run-observability/fixtures.js
+ce99c5245e603afba485c5edbccddeb76882e2f06e82c000100fe025d2c3e46f  server/src/runObservability.js
+975259de0ec3e2e2f1a006452b3cbc66160f7ffe787418fed6266f90857a31b8  server/src/runObservabilityReaders.js

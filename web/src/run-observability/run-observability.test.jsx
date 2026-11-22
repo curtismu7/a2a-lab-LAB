@@ -4,7 +4,7 @@ import { render, screen, within, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, test } from "vitest";
 import RunObservability from "./RunObservability";
 import { setJsonView } from "../components/JsonPane";
-import { mockRecord, realRecord, longRecord, emptyRecord, errorRecord, streams } from "./fixtures";
+import { mockRecord, realRecord, longRecord, emptyRecord, partialRecord, errorRecord, streams } from "./fixtures";
 
 beforeEach(() => setJsonView("raw"));
 
@@ -134,6 +134,60 @@ describe("RunObservability", () => {
     expect(screen.getByTestId("ro-reason-resource")).toHaveTextContent("Docker has no container named mcp-server");
   });
 
+  test("source is required: a missing or invalid source prop is an alert, never a guess from the record", () => {
+    const { unmount } = render(<RunObservability record={realRecord} />);
+    expect(screen.getByTestId("ro-no-source")).toHaveTextContent(/needs source="mock" or source="real"/);
+    expect(screen.queryByTestId("ro-basis")).toBeNull();
+    expect(screen.queryByTestId("ro-table")).toBeNull();
+    unmount();
+    render(<RunObservability record={realRecord} source="simulated" />);
+    expect(screen.getByTestId("ro-no-source")).toBeInTheDocument();
+  });
+
+  test("an object where text belongs (an API's error message, a row's message, a stream's fields) is shown as text and does not crash", () => {
+    const { unmount } = render(<RunObservability record={{ error: "x", message: { reason: "bad window", code: 400 } }} source="real" />);
+    expect(screen.getByRole("alert")).toHaveTextContent(/bad window/);
+    unmount();
+    const odd = { ...realRecord, rows: [{ ...realRecord.rows[0], message: { not: "a string" }, product: ["a", "b"] }, null, 7, ...realRecord.rows.slice(1)] };
+    render(<RunObservability record={odd} source="real" streams={[{ product: { p: 1 }, lives: 3, streams: null }]} />);
+    expect(screen.getByTestId("ro-row-r1-line")).toHaveTextContent('{"not":"a string"}');
+    expect(screen.getByTestId("ro-streams")).toHaveTextContent('{"p":1}');
+  });
+
+  test("a new record starts a clean panel: open rows and the layer filter do not carry over to another run's rows", () => {
+    const { rerender } = render(<RunObservability record={realRecord} source="real" />);
+    fireEvent.click(within(screen.getByTestId("ro-row-r4-line")).getByRole("button"));
+    fireEvent.click(within(screen.getByTestId("ro-lane-gateway")).getByRole("button", { name: "Agent gateway" }));
+    expect(screen.getByTestId("ro-detail-r4")).toBeInTheDocument();
+    expect(screen.getByTestId("ro-filter-note")).toBeInTheDocument();
+    rerender(<RunObservability record={{ ...realRecord, runId: "run-2" }} source="real" />);
+    expect(screen.queryByTestId("ro-detail-r4")).toBeNull();
+    expect(screen.queryByTestId("ro-filter-note")).toBeNull();
+    expect(screen.getAllByTestId(/^ro-row-.*-line$/)).toHaveLength(6);
+  });
+
+  test("aria-controls only points at a row that exists (none while collapsed), and the table keeps its roles for Safari", () => {
+    render(<RunObservability record={realRecord} source="real" />);
+    const btn = within(screen.getByTestId("ro-row-r1-line")).getByRole("button");
+    expect(btn).not.toHaveAttribute("aria-controls");
+    fireEvent.click(btn);
+    expect(document.getElementById(btn.getAttribute("aria-controls"))).not.toBeNull();
+    const table = screen.getByTestId("ro-table");
+    expect(table).toHaveAttribute("role", "table");
+    expect(table.querySelectorAll('[role="rowgroup"]')).toHaveLength(2);
+    expect(table.querySelectorAll('[role="columnheader"]')).toHaveLength(6);
+    expect(table.querySelectorAll('tr:not([role="row"])')).toHaveLength(0);
+    expect(table.querySelectorAll('td:not([role="cell"])')).toHaveLength(0);
+  });
+
+  test("a partial search says absence is not proof: the chip reads Not found (partial search), and the reason is shown", () => {
+    render(<RunObservability record={partialRecord} source="real" />);
+    expect(screen.getByTestId("ro-coverage-agent")).toHaveTextContent("Not found (partial search)");
+    expect(screen.getByTestId("ro-reason-agent")).toHaveTextContent(/absence is not proof/);
+    expect(screen.getByTestId("ro-coverage-person")).toHaveTextContent("Logged");
+    expect(screen.getByTestId("ro-truncated")).toBeInTheDocument();
+  });
+
   test("a truncated excerpt says so", () => {
     render(<RunObservability record={{ ...realRecord, truncated: true }} source="real" />);
     expect(screen.getByTestId("ro-truncated")).toBeInTheDocument();
@@ -151,7 +205,7 @@ describe("RunObservability", () => {
   });
 
   test("nothing secret-looking is rendered for any fixture", () => {
-    for (const record of [mockRecord, realRecord, longRecord, emptyRecord]) {
+    for (const record of [mockRecord, realRecord, longRecord, emptyRecord, partialRecord]) {
       const { container, unmount } = render(<RunObservability record={record} source={record.source} streams={streams} />);
       expect(container.textContent).not.toMatch(/Bearer\s+[A-Za-z0-9._-]{8,}|eyJ[\w-]{8,}\.|client_secret|\b\d{1,3}(\.\d{1,3}){3}\b/);
       unmount();
