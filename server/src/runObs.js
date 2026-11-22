@@ -86,17 +86,11 @@ export function mockLayers(events) {
   }));
 }
 
-// The ids of this run (raw: compared before masking, then masked on the way out).
-export function correlationOf(run) {
-  const latest = (k) => [...run].reverse().find((e) => e[k])?.[k];
-  return { sub: latest('sub'), actClientId: latest('actor'), traceId: latest('traceId') };
-}
-
 export async function buildRunRecord({ events, clock = Date.now }) {
   const run = currentRun(events);
   if (!run.length) return null;
   return createRunObservability({ clock }).collectRun({
     runId: `a2a-${Date.parse(run[0].at)}`, startedAt: run[0].at, endedAt: run[run.length - 1].at,
-    correlation: correlationOf(run), source: 'mock', layers: mockLayers(run),
+    source: 'mock', layers: mockLayers(run), // no correlation: nothing is matched against logs here, so no id is declared and names stay readable
   });
 }

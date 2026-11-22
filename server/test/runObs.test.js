@@ -49,9 +49,9 @@ test('mock: a permitted run gives a record every row of which the mock computed 
     const msgs = r.rows.filter((x) => x.origin === 'simulated').map((x) => `${x.layer}|${x.outcome}|${x.message}`);
     assert.equal(msgs.length, 4, msgs.join('\n'));
     assert.match(msgs[0], /^agent\|allowed\|RFC 8693 exchange #1 .*act=\{generalist-agent\}/);
-    // The masker shortens every id this run declares in `correlation` (here the specialist, the actor client id) to its first 4 and last 2 characters.
-    assert.match(msgs[1], /^agent\|allowed\|RFC 8693 exchange #2 .*port…st -> generalist-agent/);
-    assert.match(msgs[2], /^gateway\|info\|Agent Card registry lookup: "port…st" is registered/);
+    // No id is declared in `correlation` (nothing is matched against logs), so the names stay readable.
+    assert.match(msgs[1], /^agent\|allowed\|RFC 8693 exchange #2 .*portfolio-specialist -> generalist-agent/);
+    assert.match(msgs[2], /^gateway\|info\|Agent Card registry lookup: "portfolio-specialist" is registered/);
     assert.match(msgs[3], /^gateway\|allowed\|PERMIT/);
     assert.deepEqual(r.summary, { allowed: 3, refused: 0, blocked: 0, info: 1, unverified: 0 });
     for (const l of ['person', 'authorize', 'privilege', 'resource']) assert.ok(r.reasons[l], `${l} says why it is not logged`);
@@ -60,16 +60,16 @@ test('mock: a permitted run gives a record every row of which the mock computed 
   });
 });
 
-test('declared ids (sub, specialist, trace id) are shortened inside row detail without marking the record truncated', async () => {
+test('a long sub and the specialist stay readable in row detail, and the record is not marked truncated', async () => {
   await withLab(async ({ call, run }) => {
     await run('portfolio-specialist', 'obs-a', 'user-with-a-long-name');
     const r = await rec(call);
     assert.deepEqual(assertRunObservability(r), []);
-    assert.equal(r.truncated, false, 'shortening a declared id is not a cut');
+    assert.equal(r.truncated, false);
     const detailText = JSON.stringify(r.rows.filter((x) => x.detail).map((x) => x.detail));
-    assert.match(detailText, /user…me/, 'the sub is shortened in detail');
-    assert.match(detailText, /port…st/, 'the specialist is shortened in detail');
-    assert.match(detailText, /"traceId":"[0-9a-f]{4}…[0-9a-f]{2}"/, 'the trace id is shortened in detail');
+    assert.match(detailText, /"sub":"user-with-a-long-name"/);
+    assert.match(detailText, /"sub":"portfolio-specialist"/);
+    assert.match(detailText, /"traceId":"<id>"/, 'the only value the generic id rule masks: the 32-hex W3C trace id');
   });
 });
 
@@ -83,7 +83,7 @@ test('mock: an unregistered specialist is a refusal the record shows, and the re
     assert.match(r.reasons.resource, /no tool server/);
     const gw = r.rows.filter((x) => x.layer === 'gateway');
     assert.deepEqual(gw.map((x) => x.outcome), ['info', 'refused']);
-    assert.match(gw[0].message, /"rogu…st" is not registered/);
+    assert.match(gw[0].message, /"rogue-specialist" is not registered/);
     assert.match(gw[1].message, /unregistered_specialist/);
     assert.equal(r.summary.refused, 1);
   });
@@ -192,13 +192,13 @@ test('overlapping runs on one workspace: exchange #1 (A), #1 (B), #2 (A), call (
     assert.equal((await tool(call, a2.body.token)).status, 200);
     let r = await rec(call);
     assert.deepEqual(assertRunObservability(r), []);
-    assert.deepEqual(msgsOf(r).map((m) => /user…bb/.test(m)), [true], 'B alone: only its exchange #1');
-    assert.ok(!/user[-…]aa/.test(JSON.stringify(r)), 'nothing of A');
+    assert.deepEqual(msgsOf(r).map((m) => /user-bbbb/.test(m)), [true], 'B alone: only its exchange #1');
+    assert.ok(!JSON.stringify(r).includes('user-aaaa'), 'nothing of A');
     const b2 = await ex2(call, b1.body.token);
     await tool(call, b2.body.token);
     r = await rec(call);
     assert.equal(msgsOf(r).length, 4);
-    assert.ok(msgsOf(r).every((m) => !/user[-…]aa/.test(m)) && msgsOf(r).slice(0, 2).every((m) => /user…bb/.test(m)));
+    assert.ok(msgsOf(r).every((m) => !/user-aaaa/.test(m)) && msgsOf(r).slice(0, 2).every((m) => /user-bbbb/.test(m)));
   });
 });
 
