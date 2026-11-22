@@ -11,6 +11,7 @@ vi.mock("../api", () => ({
   exchangeOne: vi.fn(),
   exchangeTwo: vi.fn(),
   getAgentCard: vi.fn(async () => ({ name: "Generalist Banking Agent", skills: [{ id: "portfolio" }] })),
+  getRunObservability: vi.fn(async () => ({ record: null, message: "No run yet" })),
 }));
 
 import { runTool, exchangeOne, exchangeTwo } from "../api";

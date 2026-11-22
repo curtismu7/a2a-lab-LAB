@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Json from "./Json";
-import { runTool, getRegistry, setRegistration, exchangeOne, exchangeTwo, getAgentCard } from "../api";
+import { runTool, getRegistry, setRegistration, exchangeOne, exchangeTwo, getAgentCard, getRunObservability } from "../api";
+import RunObservability from "../run-observability/RunObservability";
 import { visible } from "../safeText";
 
 const STATUS_CLASS = { measured: "tag tag--ok", inferred: "tag", UNVERIFIED: "tag tag--warn" };
@@ -21,6 +22,41 @@ export function Hops({ hops, traceId }) {
       </div>
     </section>
   );
+}
+
+// Rule 27: where this lab's own logs live and where they stream (the README says the same).
+export const RUN_OBS_STREAMS = [
+  { product: "A2A Lab server (this lab)", lives: "the lab container's stdout: one timestamped line per decision (actor, outcome, code, trace id; never a token)", streams: "the family log collector to demo-logs-a2a-lab, then a SIEM, when the collector is set to watch this container (the lab does not ship them itself)" },
+  { product: "PingOne Authorize, Privilege, the agent gateway", lives: "not run by this lab: its gateway, registry and policy are mocks", streams: "nothing to stream" },
+];
+
+/** What each layer logged for the run above. Mock: simulated rows from the decisions the mock computed. Real is reserved: no record. */
+const TITLE = "What each layer logged for this run";
+const Note = ({ testId, children }) => (
+  <div className="panel">
+    <section className="ro" data-testid={testId} aria-label={TITLE}>
+      <h2>{TITLE}</h2>
+      <p className="ro-muted">{children}</p>
+    </section>
+  </div>
+);
+
+export function RunObs({ run, tick, mode }) {
+  // state: null = nothing asked yet, { pending } = a fetch is in flight (the previous record stays on screen), { record, message } = answered.
+  const [state, setState] = useState(null);
+  useEffect(() => {
+    let live = true;
+    if (!run || mode === "real") { setState(null); return undefined; }
+    setState((s) => ({ ...(s || {}), pending: true }));
+    getRunObservability().then((b) => { if (live) setState(b && "record" in b ? { record: b.record, message: b.message } : { record: b }); }, () => { if (live) setState({ record: { error: "unreachable", message: "Could not reach the server." } }); });
+    return () => { live = false; };
+  }, [run, tick, mode]);
+  if (mode === "real") {
+    return <Note testId="ro-real-not-offered">Not offered in Real mode. This lab's Real mode is reserved: it has no live data path, so there is no real run whose logs could be read, and nothing is shown rather than something made up. Switch to Mock to see the simulated record. The panel will read Elasticsearch when Real exists.</Note>;
+  }
+  if (run && (!state || (state.pending && !state.record))) return <Note testId="ro-loading">Collecting this run's logs...</Note>;
+  if (run && state && !state.record && state.message) return <Note testId="ro-none">{state.message}</Note>;
+  return <div className="panel"><RunObservability record={run && state ? state.record : null} source="mock" streams={RUN_OBS_STREAMS} /></div>;
 }
 
 const WORDS = {
@@ -166,7 +202,7 @@ function AgentCardPanel() {
   );
 }
 
-export default function PolicyGate({ story, resetSignal, requestedId, onSelect }) {
+export default function PolicyGate({ story, resetSignal, requestedId, onSelect, mode = "mock" }) {
   const known = (v) => story.scenarios.some((s) => s.id === v);
   const [id, setId] = useState(known(requestedId) ? requestedId : story.scenarios[0].id);
   useEffect(() => { if (known(requestedId)) setId(requestedId); }, [requestedId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -221,6 +257,7 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect }
         <Verdict run={run} />
         {run && <Hops hops={run.hops} traceId={run.traceId} />}
       </section>
+      <RunObs run={run} tick={`${resetSignal}-${boardTick}`} mode={mode} />
       <div className="duo">
         <RegistryBoard onChanged={() => setBoardTick((n) => n + 1)} />
         <AgentCardPanel />

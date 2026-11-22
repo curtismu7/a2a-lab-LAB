@@ -21,7 +21,7 @@ export function createWorkspaces({ max = 500, ttlMs = 60 * 60 * 1000, now = Date
     const byAge = [...map.entries()].sort((a, b) => a[1].at - b[1].at);
     while (map.size > max) { const [id] = byAge.shift(); map.delete(id); }
   };
-  const blank = () => ({ runs: [], registry: makeRegistry ? makeRegistry() : null, at: now() });
+  const blank = () => ({ runs: [], events: [], registry: makeRegistry ? makeRegistry() : null, at: now() });
   return {
     state(id) {
       sweep();
