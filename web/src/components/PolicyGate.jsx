@@ -202,7 +202,7 @@ function AgentCardPanel() {
   );
 }
 
-export default function PolicyGate({ story, resetSignal, requestedId, onSelect, mode = "mock" }) {
+export default function PolicyGate({ story, resetSignal, requestedId, onSelect, mode = "mock", onRun = null }) {
   const known = (v) => story.scenarios.some((s) => s.id === v);
   const [id, setId] = useState(known(requestedId) ? requestedId : story.scenarios[0].id);
   useEffect(() => { if (known(requestedId)) setId(requestedId); }, [requestedId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -223,7 +223,7 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect, 
       const unauth = await runTool({ tool: "get_portfolio_summary" }).catch(() => ({ ok: false, status: 0, body: {} }));
       if (drop()) return;
       if (unauth.status !== 401) { setRun(null); setFail(`Expected a 401 without the bearer, got ${unauth.status}.`); return; }
-      setRun(unauth.body);
+      setRun(unauth.body); onRun?.(unauth.body);
     }
     if (sc.generalist == null) return;
     const e1 = await exchangeOne({ user: sc.user, generalist: sc.generalist, scope: sc.scope }).catch(() => ({ ok: false, body: {} }));
@@ -235,10 +235,10 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect, 
     if (!e2.ok) { setRun(null); setFail(e2.body.detail || "Exchange #2 failed."); return; }
     const res = await runTool({ token: e2.body.token, tool: "get_portfolio_summary" }).catch(() => ({ ok: false, status: 0, body: {} }));
     if (drop()) return;
-    if (res.body.decision) setRun(res.body); else { setRun(null); setFail(`Could not evaluate (${res.body.detail || res.body.error || res.status}).`); }
-  }, [story]);
+    if (res.body.decision) { setRun(res.body); onRun?.(res.body); } else { setRun(null); setFail(`Could not evaluate (${res.body.detail || res.body.error || res.status}).`); }
+  }, [story, onRun]);
 
-  useEffect(() => { setRun(null); }, [resetSignal]);
+  useEffect(() => { setRun(null); onRun?.(null); }, [resetSignal]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { runScenario(id); }, [id, resetSignal, runScenario]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
