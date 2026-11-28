@@ -12,18 +12,23 @@ import { readReturnContext } from "./return-link/returnTargets.js";
 import { scenarioFor, verticalFor } from "./handoffMap";
 import { getJson, resetWorkspace, setMode } from "./api";
 import VerifyMark from "./components/VerifyMark.jsx";
+import ModeModal from "./mode-modal/ModeModal.jsx";
 
 export const TABS = [
   { id: "gate", label: "Delegation & entitlement" },
   { id: "diagram", label: "Diagram" },
   { id: "talk", label: "Talk track" },
 ];
-// The banner is never blank and never claims "not hosted" before it knows: until /api/info or /api/scenarios answers (or if both fail)
-// it says both, honestly.
+// The Real-or-mock modal replaced the long simulation banner. Its line is never blank and never claims "not hosted" before it knows: until /api/info
+// or /api/scenarios answers (or if both fail) the Mock line says both, honestly. Hosted is Mock only, so it is a Mock line, not a mode.
 const TAIL = "Nothing here calls a real gateway, identity provider or tenant.";
-export const BANNER_UNKNOWN = `SIMULATED / HOSTED SIMULATION: a mock A2A delegation chain, a mock Agent Card registry and a mock RFC 8693 exchange. ${TAIL}`;
-const BANNER_LOCAL = `SIMULATED: a mock A2A delegation chain, a mock Agent Card registry and a mock RFC 8693 exchange. ${TAIL}`;
-const BANNER_HOSTED = `HOSTED SIMULATION: a mock A2A delegation chain, a mock Agent Card registry and a mock RFC 8693 exchange. ${TAIL}`;
+const CHAIN = "a mock A2A delegation chain, a mock Agent Card registry and a mock RFC 8693 exchange";
+export const MODE_LINES = {
+  mock: `Everything on this page is simulated: ${CHAIN}. ${TAIL}`,
+  hosted: `Hosted simulation: ${CHAIN}. ${TAIL}`,
+  unknown: `Simulated, and possibly a hosted simulation: ${CHAIN}. ${TAIL}`,
+  real: `Real is reserved in this build: it has no live data path, so the runs still use ${CHAIN}. ${TAIL}`,
+};
 
 const hashParts = () => {
   const h = window.location.hash.replace("#", "");
@@ -79,7 +84,7 @@ export default function App() {
   }, []);
 
   const hosted = story ? !!story.hosted : info ? !!info.hosted : null;
-  const banner = story ? story.banner : hosted === true ? BANNER_HOSTED : hosted === false ? BANNER_LOCAL : BANNER_UNKNOWN;
+  const mockLine = hosted === true ? MODE_LINES.hosted : hosted === false ? MODE_LINES.mock : MODE_LINES.unknown;
   return (
     <div className={`app${presenter ? " app--presenter" : ""}`}>
       <header className="shell-bar">
@@ -110,7 +115,6 @@ export default function App() {
         </TopMenu>
       </header>
       <main className="page">
-        <p className="banner" role="status" data-testid="banner">{banner}</p>
         <ReturnLink app="a2a-lab" />
         {error && <p className="app-error" role="alert">Could not load the lab ({error}). Is the server running?</p>}
         <p className="sr-only" role="status" aria-live="polite">{resetMsg}</p>
@@ -141,6 +145,7 @@ export default function App() {
           )}
         </div>
       </main>
+      <ModeModal mode={info && info.mode === "real" ? "real" : "mock"} lines={{ mock: mockLine, real: MODE_LINES.real }} storageKey="a2a-mode" />
     </div>
   );
 }
