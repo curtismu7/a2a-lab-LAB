@@ -13,7 +13,7 @@ import App from "./App";
 
 const mark = (status, label, extra = {}) => ({ status, label, note: "", updatedAt: "2026-11-15", source: "shipped", ...extra });
 const stubShelf = (payload) => vi.stubGlobal("fetch", vi.fn(async (url) => (String(url) === "/api/shelf" ? { ok: true, json: async () => payload } : { ok: false, json: async () => ({}) })));
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); sessionStorage.clear(); });
 
 describe("verification mark in the header", () => {
   it("shows this lab's own mark, and no other lab's", async () => {

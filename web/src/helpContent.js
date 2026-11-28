@@ -25,7 +25,7 @@ export const HELP_SECTIONS = [
     heading: "How to use the page",
     body: [
       "Delegation & entitlement tab: pick a scenario and run it; the Decision shows the outcome, the reason and the token's act chain. Vertical (retail and friends) changes every name. Run observability, under the Decision, shows one row per decision across six layers for the current run — every row is simulated (the lab has no logs to read).",
-      "Diagram: movable boxes, Reset in the header restores them. Talk track opens the script. Presenter hides the intro; the banner and the Mock / Real badge stay. Reset clears only your workspace: registry flips, exchanges and runs."
+      "Diagram: movable boxes, Reset in the header restores them. Talk track opens the script. Presenter hides the intro; the Mock / Real badge stays, and the Mock or Real modal opens once per session. Reset clears only your workspace: registry flips, exchanges and runs."
     ]
   },
   {

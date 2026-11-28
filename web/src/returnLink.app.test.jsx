@@ -15,7 +15,7 @@ vi.mock("./components/DiagramTab", () => ({ default: () => null }));
 vi.mock("./components/ShelfLink", () => ({ default: () => null }));
 import App from "./App";
 
-afterEach(() => { cleanup(); calls.length = 0; window.history.replaceState(null, "", "/"); });
+afterEach(() => { cleanup(); calls.length = 0; sessionStorage.clear(); window.history.replaceState(null, "", "/"); });
 
 describe("hand-off from Customer Agent LAB", () => {
   it("every mapped use case names a real scenario, every mapped vertical a real vertical", () => {
@@ -31,10 +31,10 @@ describe("hand-off from Customer Agent LAB", () => {
     window.history.replaceState(null, "", "/?from=customer-agent&uc=UC2.6&vertical=banking");
     render(<App />);
     expect(screen.getByRole("note", { name: "Opened from Customer Agent LAB" }).textContent).toContain("UC2.6");
-    expect(screen.getByTestId("banner").nextElementSibling).toBe(screen.getByRole("note", { name: "Opened from Customer Agent LAB" })); // banner first, strip right below
+    expect(screen.queryByTestId("banner")).toBeNull();
     expect(screen.getAllByRole("button", { name: /Back to Customer Agent LAB/ })).toHaveLength(2);
     expect(document.querySelector("header.shell-bar .shell-right button.return-link--header")).not.toBeNull(); // header Back in the shell bar TopMenu
-    expect(document.querySelector("main").firstElementChild).toBe(screen.getByTestId("banner")); // shell bar first, then main with the banner first
+    expect(document.querySelector("main").firstElementChild).toBe(screen.getByRole("note", { name: "Opened from Customer Agent LAB" })); // shell bar first, then main opens with the strip
     await waitFor(() => expect(screen.getByTestId("pg").textContent).toBe("a2a-unregistered"));
     expect(calls).toContain("/api/scenarios?vertical=finance");
   });
