@@ -41,6 +41,7 @@ export default function App() {
   const [error, setError] = useState(null);
   const [tab, setTab] = useState(hashParts().tab);
   const [requested, setRequested] = useState(() => hashParts().scenario || scenarioFor(handoff));
+  const [lastRun, setLastRun] = useState(null); // the gate tab's last run; the diagram tab shows its hops in the expanded boxes
   const [presenter, setPresenter] = useState(false);
   const [talkOpen, setTalkOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -131,8 +132,8 @@ export default function App() {
                   {story.talkTrack.filter((t) => (tab === "gate" ? ["say-first", "two-things", "chain", "least-privilege", "who-acting", "unverified"] : ["say-first"]).includes(t.id)).map((t) => <p key={t.id}><strong>{t.title}.</strong> {t.say}</p>)}
                 </aside>
               )}
-              {tab === "gate" && <PolicyGate key={vertical} story={story} resetSignal={resetSignal} requestedId={requested} onSelect={pickScenario} mode={info ? info.mode : "mock"} />}
-              {tab === "diagram" && <DiagramTab vertical={vertical} resetSignal={resetSignal} />}
+              {tab === "gate" && <PolicyGate key={vertical} story={story} resetSignal={resetSignal} requestedId={requested} onSelect={pickScenario} mode={info ? info.mode : "mock"} onRun={setLastRun} />}
+              {tab === "diagram" && <DiagramTab vertical={vertical} resetSignal={resetSignal} run={lastRun} />}
               {tab === "talk" && <TalkTrack talk={story.talkTrack} />}
       <TalkTrackDialog isOpen={talkOpen} onClose={() => setTalkOpen(false)} talk={story?.talkTrack || []} />
       <HelpDialog isOpen={helpOpen} onClose={() => setHelpOpen(false)} sections={HELP_SECTIONS} docsUrl="https://github.com/curtismu7/a2a-lab-LAB#readme" />
